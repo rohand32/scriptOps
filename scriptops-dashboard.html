@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScriptOps — Internal Automation Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #080b10;
+  --bg1: #0d1117;
+  --bg2: #131920;
+  --bg3: #1a2230;
+  --bg4: #1e2a3a;
+  --bg5: #243042;
+  --border: rgba(99,178,255,0.08);
+  --border2: rgba(99,178,255,0.14);
+  --border3: rgba(99,178,255,0.22);
+  --text0: #f0f4ff;
+  --text1: #b8c8e0;
+  --text2: #6a7f99;
+  --text3: #3d5068;
+  --cyan: #38d9f5;
+  --cyan-d: rgba(56,217,245,0.1);
+  --green: #34d97b;
+  --green-d: rgba(52,217,123,0.1);
+  --amber: #f0a840;
+  --amber-d: rgba(240,168,64,0.1);
+  --red: #f05060;
+  --red-d: rgba(240,80,96,0.1);
+  --blue: #5090ff;
+  --blue-d: rgba(80,144,255,0.1);
+  --purple: #9d70ff;
+  --purple-d: rgba(157,112,255,0.1);
+  --pink: #f06090;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Sora', sans-serif;
+  --r: 6px;
+  --r2: 10px;
+  --r3: 14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--sans);background:var(--bg0);color:var(--text0);display:flex;font-size:14px;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:4px;}
+
+/* ── LOGIN ── */
+#login{
+  position:fixed;inset:0;background:var(--bg0);z-index:999;
+  display:flex;align-items:center;justify-content:center;
+}
+.login-wrap{width:420px;}
+.login-brand{
+  display:flex;align-items:center;gap:10px;margin-bottom:36px;
+}
+.login-brand .logo-mark{
+  width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--cyan),var(--blue));
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:16px;color:#fff;
+}
+.login-brand h1{font-size:22px;font-weight:700;letter-spacing:-0.5px;}
+.login-brand p{font-size:11px;color:var(--text2);font-family:var(--mono);}
+.login-label{font-size:11px;color:var(--text2);font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+.user-pick{display:flex;flex-direction:column;gap:6px;}
+.ucard{
+  display:flex;align-items:center;gap:12px;padding:13px 16px;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);
+  cursor:pointer;transition:all 0.13s;
+}
+.ucard:hover{border-color:var(--border3);background:var(--bg3);transform:translateX(3px);}
+.ucard .av{
+  width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;flex-shrink:0;
+}
+.ucard .name{font-size:13px;font-weight:500;color:var(--text0);}
+.ucard .email{font-size:11px;color:var(--text2);font-family:var(--mono);}
+.ucard .rbadge{
+  margin-left:auto;font-size:10px;font-family:var(--mono);padding:3px 9px;
+  border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;white-space:nowrap;
+}
+.login-note{font-size:11px;color:var(--text3);text-align:center;margin-top:16px;font-family:var(--mono);}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:210px;background:var(--bg1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;height:100vh;flex-shrink:0;
+}
+.sb-logo{
+  padding:18px 16px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:9px;
+}
+.sb-logo .lm{
+  width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--cyan),var(--blue));
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:12px;color:#fff;flex-shrink:0;
+}
+.sb-logo .lt{font-size:14px;font-weight:700;letter-spacing:-0.3px;}
+.sb-logo .lv{font-size:10px;color:var(--text2);font-family:var(--mono);}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 6px;}
+.nav-grp{font-size:9px;color:var(--text3);font-family:var(--mono);letter-spacing:1.2px;text-transform:uppercase;padding:10px 8px 4px;}
+.ni{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);
+  cursor:pointer;transition:all 0.12s;color:var(--text2);font-size:13px;margin:1px 0;
+  user-select:none;
+}
+.ni:hover{background:var(--bg3);color:var(--text1);}
+.ni.on{background:rgba(56,217,245,0.1);color:var(--cyan);}
+.ni .ico{width:14px;text-align:center;font-size:13px;flex-shrink:0;}
+.ni .nb{
+  margin-left:auto;background:var(--red);color:#fff;font-size:9px;
+  font-family:var(--mono);padding:1px 5px;border-radius:99px;
+}
+.ni .nsub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-left:auto;}
+.sb-foot{
+  border-top:1px solid var(--border);padding:12px 14px;
+  display:flex;align-items:center;gap:9px;
+}
+.sb-foot .av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;flex-shrink:0;}
+.sb-foot .fn{font-size:12px;font-weight:500;color:var(--text0);line-height:1.2;}
+.sb-foot .fr{font-size:10px;color:var(--text2);font-family:var(--mono);}
+.sb-foot .lout{margin-left:auto;font-size:11px;color:var(--text3);cursor:pointer;padding:4px;}
+.sb-foot .lout:hover{color:var(--red);}
+
+/* ── MAIN ── */
+#main{flex:1;overflow-y:auto;height:100vh;}
+.pg{display:none;padding:26px 30px;animation:fadeIn 0.18s ease;}
+.pg.on{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;}
+.ph h1{font-size:18px;font-weight:700;letter-spacing:-0.3px;}
+.ph p{font-size:12px;color:var(--text2);margin-top:3px;font-family:var(--mono);}
+
+/* ── GRIDS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+
+/* ── STAT CARDS ── */
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px 18px;}
+.sc-lbl{font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;}
+.sc-val{font-size:26px;font-weight:700;font-family:var(--mono);line-height:1;}
+.sc-sub{font-size:11px;color:var(--text2);margin-top:7px;font-family:var(--mono);}
+.sc-trend{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:4px;margin-top:6px;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;}
+.card + .card{margin-top:14px;}
+.csec{font-size:11px;font-weight:500;color:var(--text2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.csec::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── SCRIPT ITEMS ── */
+.sl{display:flex;flex-direction:column;gap:8px;}
+.si{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);
+  padding:13px 15px;display:flex;align-items:center;gap:13px;
+  transition:border-color 0.12s;
+}
+.si:hover{border-color:var(--border2);}
+.si.locked{opacity:0.5;}
+.si-ico{
+  width:36px;height:36px;border-radius:var(--r);display:flex;align-items:center;
+  justify-content:center;font-size:16px;flex-shrink:0;background:var(--bg3);
+}
+.si-info{flex:1;min-width:0;}
+.si-name{font-size:13px;font-weight:500;color:var(--text0);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.si-desc{font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.si-meta{display:flex;gap:10px;margin-top:5px;}
+.si-meta span{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.si-acts{display:flex;gap:6px;flex-shrink:0;}
+
+/* ── TAGS ── */
+.tag{font-size:9px;padding:2px 7px;border-radius:4px;font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;}
+.t-py{background:var(--blue-d);color:var(--blue);}
+.t-sh{background:var(--amber-d);color:var(--amber);}
+.t-db{background:var(--red-d);color:var(--red);}
+.t-rp{background:var(--green-d);color:var(--green);}
+.t-cr{background:var(--purple-d);color:var(--purple);}
+.t-adm{background:var(--purple-d);color:var(--purple);}
+.t-mgr{background:var(--blue-d);color:var(--blue);}
+.t-opr{background:var(--amber-d);color:var(--amber);}
+.t-vwr{background:var(--green-d);color:var(--green);}
+.t-sv{background:var(--bg3);color:var(--text2);}
+.t-sched{background:var(--cyan-d);color:var(--cyan);}
+
+/* ── STATUS PILLS ── */
+.sp{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:99px;white-space:nowrap;}
+.sp-ok{background:var(--green-d);color:var(--green);}
+.sp-run{background:var(--cyan-d);color:var(--cyan);}
+.sp-err{background:var(--red-d);color:var(--red);}
+.sp-pend{background:var(--amber-d);color:var(--amber);}
+.sp-sched{background:var(--purple-d);color:var(--purple);}
+.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;}
+.pulse{animation:blink 1.2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r);
+  font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;border:none;
+  transition:all 0.12s;white-space:nowrap;
+}
+.btn-p{background:var(--cyan);color:var(--bg0);}
+.btn-p:hover{background:#5adeef;}
+.btn-g{background:transparent;border:1px solid var(--border2);color:var(--text1);}
+.btn-g:hover{background:var(--bg3);border-color:var(--border3);}
+.btn-run{background:var(--green-d);border:1px solid rgba(52,217,123,0.25);color:var(--green);}
+.btn-run:hover{background:rgba(52,217,123,0.18);}
+.btn-warn{background:var(--amber-d);border:1px solid rgba(240,168,64,0.25);color:var(--amber);}
+.btn-sched{background:var(--purple-d);border:1px solid rgba(157,112,255,0.25);color:var(--purple);}
+.btn-sched:hover{background:rgba(157,112,255,0.18);}
+.btn-danger{background:var(--red-d);border:1px solid rgba(240,80,96,0.25);color:var(--red);}
+.btn-danger:hover{background:rgba(240,80,96,0.18);}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-xs{padding:3px 8px;font-size:10px;}
+
+/* ── TABLES ── */
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{
+  text-align:left;font-size:10px;color:var(--text3);font-family:var(--mono);
+  text-transform:uppercase;letter-spacing:0.6px;padding:7px 10px;
+  border-bottom:1px solid var(--border);font-weight:400;
+}
+td{padding:10px 10px;border-bottom:1px solid var(--border);color:var(--text1);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(99,178,255,0.03);color:var(--text0);}
+
+/* ── TERMINAL ── */
+.term{
+  background:#040608;border:1px solid var(--border);border-radius:var(--r2);
+  font-family:var(--mono);font-size:11px;color:#4af;
+  padding:12px 14px;overflow-y:auto;line-height:1.9;
+}
+.term .ts{color:var(--text3);}
+.term .ok{color:var(--green);}
+.term .err{color:var(--red);}
+.term .warn{color:var(--amber);}
+.term .inf{color:var(--cyan);}
+.term .dim{color:var(--text3);}
+.term .sys{color:var(--purple);}
+.term .cursor{
+  display:inline-block;width:7px;height:12px;background:var(--cyan);
+  vertical-align:middle;animation:blink 0.9s step-end infinite;margin-left:2px;
+}
+
+/* ── MODAL ── */
+.mover{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;
+  align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(6px);
+}
+.mbox{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r3);
+  width:500px;max-width:94vw;padding:26px;max-height:92vh;overflow-y:auto;
+}
+.mbox h2{font-size:15px;font-weight:700;color:var(--text0);letter-spacing:-0.2px;}
+.mbox .msub{font-size:12px;color:var(--text2);font-family:var(--mono);margin:4px 0 20px;}
+.fr{margin-bottom:14px;}
+.fr label{display:block;font-size:10px;color:var(--text2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;}
+.fr input,.fr select,.fr textarea{
+  width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
+  color:var(--text0);font-family:var(--sans);font-size:12px;padding:8px 11px;outline:none;
+  transition:border-color 0.12s;
+}
+.fr input:focus,.fr select:focus,.fr textarea:focus{border-color:var(--cyan);}
+.fr select option{background:var(--bg2);}
+.fr textarea{resize:vertical;min-height:70px;font-family:var(--mono);font-size:11px;}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+
+/* ── ALERTS ── */
+.alert{padding:10px 13px;border-radius:var(--r);font-size:12px;border:1px solid;display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-family:var(--mono);}
+.al-warn{background:var(--amber-d);border-color:rgba(240,168,64,0.3);color:var(--amber);}
+.al-inf{background:var(--blue-d);border-color:rgba(80,144,255,0.25);color:var(--blue);}
+.al-err{background:var(--red-d);border-color:rgba(240,80,96,0.3);color:var(--red);}
+.al-ok{background:var(--green-d);border-color:rgba(52,217,123,0.3);color:var(--green);}
+
+/* ── PERM MATRIX ── */
+.pmx th{background:var(--bg3);}
+.pmx td.ck{text-align:center;color:var(--green);font-size:13px;}
+.pmx td.no{text-align:center;color:var(--text3);font-size:12px;}
+.pmx td.ck-adm{text-align:center;color:var(--purple);font-size:13px;}
+
+/* ── PROGRESS ── */
+.pbar-wrap{background:var(--bg3);border-radius:3px;height:3px;overflow:hidden;margin-top:8px;}
+.pbar{height:100%;border-radius:3px;transition:width 0.35s ease;}
+
+/* ── SERVER CARD ── */
+.srv-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;}
+.srv-hd{display:flex;align-items:center;gap:9px;margin-bottom:14px;}
+.srv-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.srv-on{background:var(--green);box-shadow:0 0 6px var(--green);}
+.srv-off{background:var(--red);}
+.mbar{background:var(--bg3);border-radius:3px;height:3px;margin-top:4px;}
+.mbar-fill{height:100%;border-radius:3px;}
+
+/* ── SCHED ── */
+.sched-item{
+  display:flex;align-items:center;gap:12px;padding:11px 13px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);
+  margin-bottom:7px;
+}
+.sched-time{font-family:var(--mono);font-size:12px;color:var(--cyan);min-width:120px;}
+.sched-info{flex:1;}
+.sched-name{font-size:13px;font-weight:500;color:var(--text0);}
+.sched-cron{font-size:10px;color:var(--text2);font-family:var(--mono);margin-top:2px;}
+.toggle-wrap{display:flex;align-items:center;gap:8px;}
+.tog{
+  width:34px;height:18px;background:var(--bg5);border-radius:9px;cursor:pointer;
+  position:relative;transition:background 0.2s;flex-shrink:0;
+}
+.tog.on{background:var(--cyan);}
+.tog::after{
+  content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;
+  border-radius:50%;background:#fff;transition:transform 0.2s;
+}
+.tog.on::after{transform:translateX(16px);}
+
+/* ── STREAM ── */
+.stream-badge{
+  display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);
+  padding:3px 9px;border-radius:4px;background:var(--cyan-d);color:var(--cyan);
+}
+
+/* ── API ENDPOINT ── */
+.ep{background:#040608;border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;font-family:var(--mono);font-size:11px;margin-bottom:10px;}
+.ep .method-post{color:var(--green);}
+.ep .method-get{color:var(--blue);}
+.ep .url{color:var(--text1);}
+.ep .kw{color:var(--purple);}
+.ep .str{color:var(--amber);}
+.ep .cmt{color:var(--text3);}
+
+/* ── UTILS ── */
+.hidden{display:none!important;}
+.flex{display:flex;}
+.fac{display:flex;align-items:center;}
+.gap6{gap:6px;}
+.gap8{gap:8px;}
+.gap12{gap:12px;}
+.mt8{margin-top:8px;}
+.mt12{margin-top:12px;}
+.mt16{margin-top:16px;}
+.mt20{margin-top:20px;}
+.mb8{margin-bottom:8px;}
+.mb12{margin-bottom:12px;}
+.mb14{margin-bottom:14px;}
+.mb20{margin-bottom:20px;}
+.mono{font-family:var(--mono);}
+.dim{color:var(--text2);}
+.tiny{font-size:11px;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ LOGIN ═══════════════════════════════════ -->
+<div id="login">
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="logo-mark">S/</div>
+      <div><h1>ScriptOps</h1><p>Internal Automation Platform v2.0</p></div>
+    </div>
+    <div class="login-label">Select account to sign in</div>
+    <div class="user-pick">
+      <div class="ucard" onclick="login('admin')">
+        <div class="av" style="background:rgba(157,112,255,0.15);color:#9d70ff">AD</div>
+        <div><div class="name">Arjun Desai</div><div class="email">arjun@corp.internal</div></div>
+        <div class="rbadge" style="background:var(--purple-d);color:var(--purple)">Admin</div>
+      </div>
+      <div class="ucard" onclick="login('manager')">
+        <div class="av" style="background:rgba(80,144,255,0.15);color:#5090ff">PM</div>
+        <div><div class="name">Priya Mehta</div><div class="email">priya@corp.internal</div></div>
+        <div class="rbadge" style="background:var(--blue-d);color:var(--blue)">Manager</div>
+      </div>
+      <div class="ucard" onclick="login('operator')">
+        <div class="av" style="background:rgba(240,168,64,0.15);color:#f0a840">RK</div>
+        <div><div class="name">Rahul Khanna</div><div class="email">rahul@corp.internal</div></div>
+        <div class="rbadge" style="background:var(--amber-d);color:var(--amber)">Operator</div>
+      </div>
+      <div class="ucard" onclick="login('viewer')">
+        <div class="av" style="background:rgba(52,217,123,0.15);color:#34d97b">SJ</div>
+        <div><div class="name">Sneha Joshi</div><div class="email">sneha@corp.internal</div></div>
+        <div class="rbadge" style="background:var(--green-d);color:var(--green)">Viewer</div>
+      </div>
+    </div>
+    <div class="login-note">Demo environment — click any user to enter</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SIDEBAR ══════════════════════════════════ -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <div class="lm">S/</div>
+    <div><div class="lt">ScriptOps</div><div class="lv">v2.0.0</div></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-grp">Main</div>
+    <div class="ni on"  onclick="nav('overview')"><span class="ico">◈</span> Overview</div>
+    <div class="ni"     onclick="nav('scripts')"><span class="ico">⟨/⟩</span> Scripts <span class="nsub" id="nb-scripts"></span></div>
+    <div class="ni"     onclick="nav('executions')"><span class="ico">▷</span> Executions <span class="nb hidden" id="nb-run">0</span></div>
+    <div class="ni"     onclick="nav('scheduler')"><span class="ico">⏱</span> Scheduler</div>
+    <div class="ni"     onclick="nav('logs')"><span class="ico">≡</span> Logs</div>
+    <div class="nav-grp">Admin</div>
+    <div class="ni" id="ni-users"   onclick="nav('users')"><span class="ico">◎</span> Users</div>
+    <div class="ni" id="ni-api"     onclick="nav('api')"><span class="ico">⊕</span> API Keys</div>
+    <div class="ni" id="ni-servers" onclick="nav('servers')"><span class="ico">▪</span> Servers</div>
+  </nav>
+  <div class="sb-foot">
+    <div class="av" id="sb-av"></div>
+    <div><div class="fn" id="sb-name">—</div><div class="fr" id="sb-role">—</div></div>
+    <div class="lout" onclick="logout()" title="Sign out">✕</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ MAIN ═════════════════════════════════════ -->
+<div id="main">
+
+<!-- ─── OVERVIEW ─── -->
+<div class="pg on" id="pg-overview">
+  <div class="ph">
+    <div><h1>Overview</h1><p id="ov-greeting">Welcome back</p></div>
+    <div class="fac gap8">
+      <div class="sp sp-ok"><span class="dot pulse"></span>All systems operational</div>
+      <button class="btn btn-p btn-sm" onclick="nav('scripts')">+ New Execution</button>
+    </div>
+  </div>
+  <div class="g4 mb14">
+    <div class="sc"><div class="sc-lbl">Total Scripts</div><div class="sc-val" style="color:var(--cyan)">14</div><div class="sc-sub">8 Python · 6 Shell</div></div>
+    <div class="sc"><div class="sc-lbl">Today's Runs</div><div class="sc-val" id="ov-runs">47</div><div class="sc-sub" id="ov-runs-sub">43 success · 4 failed</div></div>
+    <div class="sc"><div class="sc-lbl">Scheduled Jobs</div><div class="sc-val" style="color:var(--purple)">9</div><div class="sc-sub">Next in 14 min</div></div>
+    <div class="sc"><div class="sc-lbl">Active Servers</div><div class="sc-val" style="color:var(--green)" id="ov-srv">3/3</div><div class="sc-sub">prod-01 · prod-02 · db-01</div></div>
+  </div>
+  <div class="g2 mb14">
+    <div>
+      <div class="csec">Quick Launch</div>
+      <div class="sl" id="ov-quick"></div>
+    </div>
+    <div>
+      <div class="csec">Recent Executions</div>
+      <table><thead><tr><th>Script</th><th>By</th><th>Status</th><th>Ago</th></tr></thead>
+      <tbody id="ov-execs"></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="csec">Live Output Stream <span class="stream-badge"><span class="dot pulse"></span>LIVE</span></div>
+    <div class="term" style="height:160px" id="live-term"></div>
+  </div>
+</div>
+
+<!-- ─── SCRIPTS ─── -->
+<div class="pg" id="pg-scripts">
+  <div class="ph">
+    <div><h1>Script Library</h1><p>14 scripts across 3 servers · role-gated execution</p></div>
+    <div class="fac gap8">
+      <select id="scripts-filter" onchange="renderScripts()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text1);border-radius:var(--r);font-family:var(--sans);font-size:12px;padding:7px 10px;outline:none;">
+        <option value="">All Types</option>
+        <option value="report">Reports</option>
+        <option value="db">Database</option>
+        <option value="shell">Shell</option>
+        <option value="cron">Scheduled</option>
+      </select>
+      <button class="btn btn-p btn-sm" id="btn-add-script" onclick="openM('m-script')">+ Add Script</button>
+    </div>
+  </div>
+  <div id="sc-perm-alert" class="alert al-warn hidden">⚠ Some scripts require elevated permissions. Locked scripts are shown but not executable with your current role.</div>
+  <div class="sl" id="scripts-list"></div>
+</div>
+
+<!-- ─── EXECUTIONS ─── -->
+<div class="pg" id="pg-executions">
+  <div class="ph">
+    <div><h1>Executions</h1><p>Live and historical job runs</p></div>
+    <div class="fac gap8">
+      <div class="sp sp-run" id="live-run-badge" style="display:none"><span class="dot pulse"></span><span id="live-run-count">0</span> running</div>
+      <button class="btn btn-g btn-sm" onclick="renderExecs()">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Job ID</th><th>Script</th><th>Server</th><th>Triggered By</th><th>Trigger</th><th>Status</th><th>Duration</th><th>Output</th></tr></thead>
+      <tbody id="exec-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── SCHEDULER ─── -->
+<div class="pg" id="pg-scheduler">
+  <div class="ph">
+    <div><h1>Scheduler</h1><p>Cron-based job scheduling across all servers</p></div>
+    <button class="btn btn-p btn-sm" id="btn-add-sched" onclick="openM('m-sched')">+ Schedule Job</button>
+  </div>
+  <div class="g2">
+    <div>
+      <div class="csec">Upcoming Runs</div>
+      <div id="sched-upcoming"></div>
+    </div>
+    <div>
+      <div class="csec">Scheduled Jobs</div>
+      <div id="sched-list"></div>
+    </div>
+  </div>
+  <div class="card mt16">
+    <div class="csec">Schedule History (Last 7 Days)</div>
+    <table>
+      <thead><tr><th>Script</th><th>Cron</th><th>Last Run</th><th>Next Run</th><th>Status</th><th>Avg Duration</th></tr></thead>
+      <tbody id="sched-hist"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── LOGS ─── -->
+<div class="pg" id="pg-logs">
+  <div class="ph">
+    <div><h1>Execution Logs</h1><p>Full audit trail with real-time output</p></div>
+    <div class="fac gap8">
+      <select id="log-filter-script" onchange="renderLogs()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text1);border-radius:var(--r);font-family:var(--sans);font-size:12px;padding:7px 10px;outline:none;">
+        <option value="">All Scripts</option>
+        <option>generate_sales_report.py</option>
+        <option>db_insert_records.py</option>
+        <option>db_backup.sh</option>
+        <option>sync_inventory.py</option>
+        <option>cleanup_logs.sh</option>
+        <option>renew_ssl_certs.sh</option>
+      </select>
+      <select id="log-filter-level" onchange="renderLogs()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text1);border-radius:var(--r);font-family:var(--sans);font-size:12px;padding:7px 10px;outline:none;">
+        <option value="">All Levels</option>
+        <option value="err">Errors</option>
+        <option value="warn">Warnings</option>
+        <option value="ok">Success</option>
+      </select>
+      <button class="btn btn-g btn-sm" onclick="scrollLogsBottom()">↓ Latest</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="term" style="height:520px" id="log-term"></div>
+  </div>
+</div>
+
+<!-- ─── USERS ─── -->
+<div class="pg" id="pg-users">
+  <div class="ph">
+    <div><h1>User Management</h1><p>Role-based access control</p></div>
+    <button class="btn btn-p btn-sm" id="btn-add-user" onclick="openM('m-user')">+ Add User</button>
+  </div>
+  <div class="g2 mb14">
+    <div class="card">
+      <div class="csec">Permission Matrix</div>
+      <table class="pmx">
+        <thead><tr><th>Action</th><th>Admin</th><th>Manager</th><th>Operator</th><th>Viewer</th></tr></thead>
+        <tbody>
+          <tr><td>View scripts &amp; logs</td><td class="ck">✓</td><td class="ck">✓</td><td class="ck">✓</td><td class="ck">✓</td></tr>
+          <tr><td>Run report scripts</td><td class="ck">✓</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Run shell / server scripts</td><td class="ck">✓</td><td class="no">—</td><td class="ck">✓</td><td class="no">—</td></tr>
+          <tr><td>DB read queries</td><td class="ck">✓</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>DB INSERT / UPDATE</td><td class="ck-adm">✓ Admin only</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Schedule / manage jobs</td><td class="ck">✓</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Add / edit scripts</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Manage users &amp; roles</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Manage API keys</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Add / remove servers</td><td class="ck">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="csec">Team Members</div>
+      <table><thead><tr><th>User</th><th>Role</th><th>Last Active</th><th></th></tr></thead>
+      <tbody id="users-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── API KEYS ─── -->
+<div class="pg" id="pg-api">
+  <div class="ph">
+    <div><h1>API Keys</h1><p>Authenticate external services to trigger scripts</p></div>
+    <button class="btn btn-p btn-sm" id="btn-gen-key" onclick="genKey()">+ Generate Key</button>
+  </div>
+  <div class="alert al-inf mb14">ℹ API keys inherit the role of their creator. External callers can only trigger scripts permitted by that role.</div>
+  <div class="ep mb14">
+    <div class="mb8"><span class="method-post">POST</span> <span class="url">https://scriptops.internal/api/v1/execute</span></div>
+    <div class="mb8"><span class="cmt"># Headers</span></div>
+    <div class="mb8"><span class="kw">X-ScriptOps-Key:</span> <span class="str">sk_live_xxxxxxxxxxxxxxxx</span></div>
+    <div class="mb8"><span class="kw">Content-Type:</span> <span class="str">application/json</span></div>
+    <div class="mb8"><span class="cmt"># Body</span></div>
+    <div class="mb8">{ <span class="kw">"script_id"</span>: <span class="str">"gen_sales_report"</span>, <span class="kw">"params"</span>: { <span class="str">"month"</span>: <span class="str">"2024-06"</span> } }</div>
+    <div style="margin-top:10px"><span class="method-get">GET</span>  <span class="url">https://scriptops.internal/api/v1/status/</span><span class="kw">:job_id</span></div>
+    <div style="margin-top:6px"><span class="method-get">GET</span>  <span class="url">https://scriptops.internal/api/v1/stream/</span><span class="kw">:job_id</span>  <span class="cmt"> # SSE real-time output</span></div>
+  </div>
+  <div class="card">
+    <table><thead><tr><th>Name</th><th>Key (masked)</th><th>Owner</th><th>Role Scope</th><th>Last Used</th><th>Status</th><th></th></tr></thead>
+    <tbody id="api-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ─── SERVERS ─── -->
+<div class="pg" id="pg-servers">
+  <div class="ph">
+    <div><h1>Servers</h1><p>Execution environments connected via SSH</p></div>
+    <button class="btn btn-p btn-sm" id="btn-add-srv" onclick="openM('m-server')">+ Add Server</button>
+  </div>
+  <div class="g3" id="servers-grid"></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ═══════════════════════════════ MODALS ════════════════════════════════════ -->
+
+<!-- Execute Script -->
+<div class="mover hidden" id="m-exec">
+  <div class="mbox">
+    <h2 id="m-exec-title">Execute Script</h2>
+    <p class="msub" id="m-exec-sub">—</p>
+    <div class="alert al-err hidden" id="m-exec-locked">🔒 You don't have permission to run this script. Required role: <strong id="m-exec-need"></strong></div>
+    <div id="m-exec-form">
+      <div class="fr"><label>Target Server</label>
+        <select id="m-exec-server">
+          <option>prod-01 (Primary)</option><option>prod-02 (Secondary)</option><option>db-01 (Database)</option>
+        </select>
+      </div>
+      <div class="fr"><label>Parameters (JSON — optional)</label>
+        <textarea id="m-exec-params" placeholder='{ "month": "2024-06", "format": "csv" }'></textarea>
+      </div>
+      <div class="pbar-wrap hidden" id="m-exec-pbar-w">
+        <div class="pbar" id="m-exec-pbar" style="width:0%;background:var(--cyan)"></div>
+      </div>
+      <div class="term hidden mt8" style="height:140px" id="m-exec-stream"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-g" onclick="closeM('m-exec')">Cancel</button>
+      <button class="btn btn-run" id="m-exec-run" onclick="doExec()">▷ Run Script</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Job -->
+<div class="mover hidden" id="m-sched">
+  <div class="mbox">
+    <h2>Schedule Job</h2>
+    <p class="msub">Configure a recurring cron job for a script</p>
+    <div class="fr"><label>Script</label>
+      <select id="m-sched-script"></select>
+    </div>
+    <div class="fr"><label>Cron Expression</label>
+      <input type="text" id="m-sched-cron" value="0 9 * * 1-5" placeholder="0 9 * * 1-5"/>
+    </div>
+    <div class="fr"><label>Human Readable (auto)</label>
+      <input type="text" id="m-sched-human" readonly style="color:var(--cyan);"/>
+    </div>
+    <div class="g2">
+      <div class="fr"><label>Server</label>
+        <select><option>prod-01</option><option>prod-02</option><option>db-01</option></select>
+      </div>
+      <div class="fr"><label>Notify on</label>
+        <select><option>Failure only</option><option>Always</option><option>Never</option></select>
+      </div>
+    </div>
+    <div class="fr"><label>Parameters (JSON — optional)</label>
+      <textarea style="height:50px" placeholder='{ "format": "csv" }'></textarea>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-g" onclick="closeM('m-sched')">Cancel</button>
+      <button class="btn btn-sched" onclick="closeM('m-sched')">⏱ Save Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Script -->
+<div class="mover hidden" id="m-script">
+  <div class="mbox">
+    <h2>Register Script</h2>
+    <p class="msub">Add a Python or shell script to the platform</p>
+    <div class="fr"><label>Script Name</label><input type="text" placeholder="generate_monthly_report.py"/></div>
+    <div class="fr"><label>Description</label><input type="text" placeholder="Short description of what this script does"/></div>
+    <div class="g2">
+      <div class="fr"><label>Type</label>
+        <select><option>Python</option><option>Shell Script</option><option>DB Python</option></select>
+      </div>
+      <div class="fr"><label>Category</label>
+        <select><option>Report</option><option>Database</option><option>Server Ops</option><option>Cron</option></select>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="fr"><label>Primary Server</label>
+        <select><option>prod-01</option><option>prod-02</option><option>db-01</option></select>
+      </div>
+      <div class="fr"><label>Minimum Role</label>
+        <select><option>Viewer</option><option>Operator</option><option>Manager</option><option>Admin</option></select>
+      </div>
+    </div>
+    <div class="fr"><label>Script Path (on server)</label><input type="text" placeholder="/opt/scripts/reports/my_script.py"/></div>
+    <div class="fr"><label>Python/Shell Version</label><input type="text" placeholder="python3.11 / bash 5.1"/></div>
+    <div class="mfoot">
+      <button class="btn btn-g" onclick="closeM('m-script')">Cancel</button>
+      <button class="btn btn-p" onclick="closeM('m-script')">Save Script</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add User -->
+<div class="mover hidden" id="m-user">
+  <div class="mbox">
+    <h2>Add User</h2>
+    <p class="msub">Create a new account with role-based permissions</p>
+    <div class="g2">
+      <div class="fr"><label>Full Name</label><input type="text" placeholder="Vikram Singh"/></div>
+      <div class="fr"><label>Email</label><input type="email" placeholder="vikram@corp.internal"/></div>
+    </div>
+    <div class="fr"><label>Role</label>
+      <select>
+        <option>Viewer — reports only (read-only)</option>
+        <option>Operator — shell &amp; server scripts only</option>
+        <option>Manager — reports + DB read + scheduling</option>
+        <option>Admin — full access</option>
+      </select>
+    </div>
+    <div class="alert al-warn">⚠ User will receive an invite email with temporary credentials. They must reset password on first login.</div>
+    <div class="mfoot">
+      <button class="btn btn-g" onclick="closeM('m-user')">Cancel</button>
+      <button class="btn btn-p" onclick="closeM('m-user')">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Server -->
+<div class="mover hidden" id="m-server">
+  <div class="mbox">
+    <h2>Add Server</h2>
+    <p class="msub">Connect a new SSH execution environment</p>
+    <div class="g2">
+      <div class="fr"><label>Server Label</label><input type="text" placeholder="prod-03"/></div>
+      <div class="fr"><label>Hostname / IP</label><input type="text" placeholder="10.0.1.30"/></div>
+    </div>
+    <div class="g2">
+      <div class="fr"><label>SSH Port</label><input type="number" value="22"/></div>
+      <div class="fr"><label>SSH User</label><input type="text" placeholder="deploy"/></div>
+    </div>
+    <div class="fr"><label>Private Key Path (on ScriptOps host)</label><input type="text" placeholder="/etc/scriptops/keys/prod-03.pem"/></div>
+    <div class="fr"><label>OS / Environment</label><input type="text" placeholder="Ubuntu 22.04 LTS"/></div>
+    <div class="mfoot">
+      <button class="btn btn-g" onclick="closeM('m-server')">Cancel</button>
+      <button class="btn btn-p" onclick="closeM('m-server')">Add Server</button>
+    </div>
+  </div>
+</div>
+
+<!-- Output Stream Viewer -->
+<div class="mover hidden" id="m-stream">
+  <div class="mbox" style="width:600px">
+    <div class="fac gap8 mb12">
+      <h2 id="m-stream-title">Output Stream</h2>
+      <div class="stream-badge" id="m-stream-badge"><span class="dot pulse"></span>STREAMING</div>
+    </div>
+    <p class="msub" id="m-stream-sub">—</p>
+    <div class="term" style="height:320px" id="m-stream-term"></div>
+    <div class="mfoot"><button class="btn btn-g" onclick="closeM('m-stream')">Close</button></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SCRIPT ════════════════════════════════════ -->
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const USERS = {
+  admin:    {name:'Arjun Desai',   init:'AD', email:'arjun@corp.internal',  role:'admin',   col:'#9d70ff', bg:'rgba(157,112,255,0.15)'},
+  manager:  {name:'Priya Mehta',   init:'PM', email:'priya@corp.internal',  role:'manager', col:'#5090ff', bg:'rgba(80,144,255,0.15)'},
+  operator: {name:'Rahul Khanna',  init:'RK', email:'rahul@corp.internal',  role:'operator',col:'#f0a840', bg:'rgba(240,168,64,0.15)'},
+  viewer:   {name:'Sneha Joshi',   init:'SJ', email:'sneha@corp.internal',  role:'viewer',  col:'#34d97b', bg:'rgba(52,217,123,0.15)'},
+};
+// Role rank: viewer < operator < manager < admin
+const RLVL = {viewer:0, operator:1, manager:2, admin:3};
+// Per your spec:
+//   viewer   = reports read-only (no execute)
+//   operator = shell/server scripts
+//   manager  = reports + read-only DB
+//   admin    = everything incl. DB INSERT/UPDATE
+const SCRIPTS = [
+  {id:'gen_sales',   name:'generate_sales_report.py', desc:'Monthly/weekly sales report exported to CSV and emailed',  type:'python', cat:'report', ico:'📊', srv:'prod-01', minRole:'manager',  path:'/opt/scripts/reports/generate_sales_report.py'},
+  {id:'gen_inv',     name:'sync_inventory.py',         desc:'Sync inventory table from ERP API to reporting DB',        type:'python', cat:'report', ico:'📦', srv:'prod-01', minRole:'manager',  path:'/opt/scripts/sync/sync_inventory.py'},
+  {id:'user_rpt',    name:'user_activity_report.py',   desc:'Generate user activity and engagement CSV for BI team',    type:'python', cat:'report', ico:'👤', srv:'prod-02', minRole:'manager',  path:'/opt/scripts/reports/user_activity_report.py'},
+  {id:'fin_rpt',     name:'finance_reconcile.py',      desc:'Daily reconciliation report across all payment gateways',  type:'python', cat:'report', ico:'💹', srv:'prod-01', minRole:'manager',  path:'/opt/scripts/reports/finance_reconcile.py'},
+  {id:'db_insert',   name:'db_insert_records.py',      desc:'Bulk insert records from staging into production DB',      type:'python', cat:'db',     ico:'🗄️', srv:'db-01',   minRole:'admin',    path:'/opt/scripts/db/db_insert_records.py'},
+  {id:'db_update',   name:'db_update_prices.py',       desc:'UPDATE product pricing table from approved pricing sheet', type:'python', cat:'db',     ico:'💾', srv:'db-01',   minRole:'admin',    path:'/opt/scripts/db/db_update_prices.py'},
+  {id:'db_read',     name:'db_export_snapshot.py',     desc:'Read-only DB snapshot export to S3 for analytics',        type:'python', cat:'db',     ico:'📤', srv:'db-01',   minRole:'manager',  path:'/opt/scripts/db/db_export_snapshot.py'},
+  {id:'db_backup',   name:'db_backup.sh',              desc:'Full PostgreSQL dump with S3 upload and retention policy', type:'shell',  cat:'shell',  ico:'💿', srv:'db-01',   minRole:'operator', path:'/opt/scripts/ops/db_backup.sh'},
+  {id:'cleanup',     name:'cleanup_logs.sh',           desc:'Rotate and archive logs older than 7 days on all servers', type:'shell',  cat:'shell',  ico:'🧹', srv:'prod-01', minRole:'operator', path:'/opt/scripts/ops/cleanup_logs.sh'},
+  {id:'ssl_renew',   name:'renew_ssl_certs.sh',        desc:'Renew Let\'s Encrypt certificates via certbot',           type:'shell',  cat:'shell',  ico:'🔐', srv:'prod-02', minRole:'operator', path:'/opt/scripts/ops/renew_ssl_certs.sh'},
+  {id:'health',      name:'health_check.sh',           desc:'Ping all service endpoints and report status to Slack',   type:'shell',  cat:'shell',  ico:'💡', srv:'prod-01', minRole:'operator', path:'/opt/scripts/ops/health_check.sh'},
+  {id:'sched_sales', name:'scheduled_sales_push.py',   desc:'Nightly push of sales data to data warehouse',            type:'python', cat:'cron',   ico:'⏱', srv:'prod-01', minRole:'admin',    path:'/opt/scripts/cron/scheduled_sales_push.py'},
+  {id:'sched_clean', name:'scheduled_cleanup.sh',      desc:'Midnight cleanup of temp files and orphaned processes',   type:'shell',  cat:'cron',   ico:'⏰', srv:'prod-02', minRole:'admin',    path:'/opt/scripts/cron/scheduled_cleanup.sh'},
+  {id:'sched_rpt',   name:'weekly_digest.py',          desc:'Monday morning summary report emailed to all managers',   type:'python', cat:'cron',   ico:'📬', srv:'prod-01', minRole:'admin',    path:'/opt/scripts/cron/weekly_digest.py'},
+];
+const SCHEDS = [
+  {id:'sc1', script:'generate_sales_report.py', cron:'0 8 * * 1-5',  human:'Weekdays at 08:00',    srv:'prod-01', next:'Today 08:00',  lastRun:'Yesterday 08:00', status:'success', avgDur:'38s', enabled:true},
+  {id:'sc2', script:'db_backup.sh',             cron:'0 2 * * *',    human:'Daily at 02:00 AM',    srv:'db-01',   next:'Tomorrow 02:00',lastRun:'Today 02:00',    status:'success', avgDur:'1m 20s', enabled:true},
+  {id:'sc3', script:'cleanup_logs.sh',          cron:'0 0 * * 0',    human:'Sundays at midnight',  srv:'prod-01', next:'Sun 00:00',    lastRun:'Last Sun 00:00',  status:'success', avgDur:'8s', enabled:true},
+  {id:'sc4', script:'scheduled_sales_push.py',  cron:'30 23 * * *',  human:'Daily at 23:30',       srv:'prod-01', next:'Tonight 23:30',lastRun:'Yesterday 23:30', status:'success', avgDur:'2m 10s', enabled:true},
+  {id:'sc5', script:'renew_ssl_certs.sh',       cron:'0 3 1 * *',    human:'1st of each month',    srv:'prod-02', next:'1 Jun 03:00',  lastRun:'1 May 03:00',     status:'success', avgDur:'22s', enabled:false},
+  {id:'sc6', script:'finance_reconcile.py',     cron:'0 6 * * 1-5',  human:'Weekdays at 06:00',    srv:'prod-01', next:'Today 06:00',  lastRun:'Yesterday 06:00', status:'failed',  avgDur:'—', enabled:true},
+  {id:'sc7', script:'health_check.sh',          cron:'*/5 * * * *',  human:'Every 5 minutes',      srv:'prod-01', next:'In 3 min',     lastRun:'5 min ago',       status:'success', avgDur:'2s', enabled:true},
+  {id:'sc8', script:'weekly_digest.py',         cron:'0 7 * * 1',    human:'Mondays at 07:00',     srv:'prod-01', next:'Mon 07:00',    lastRun:'Last Mon 07:00',  status:'success', avgDur:'55s', enabled:true},
+  {id:'sc9', script:'db_export_snapshot.py',    cron:'0 1 * * *',    human:'Daily at 01:00 AM',    srv:'db-01',   next:'Tomorrow 01:00',lastRun:'Today 01:00',    status:'success', avgDur:'1m 8s', enabled:true},
+];
+const EXECS = [
+  {id:'J0047',script:'generate_sales_report.py',srv:'prod-01',user:'Priya Mehta',   trigger:'manual',status:'success',dur:'38s',   ago:'12m ago'},
+  {id:'J0046',script:'db_backup.sh',            srv:'db-01',  user:'scheduler',     trigger:'cron',  status:'success',dur:'1m18s', ago:'1h ago'},
+  {id:'J0045',script:'sync_inventory.py',       srv:'prod-01',user:'Rahul Khanna',  trigger:'manual',status:'success',dur:'1m04s', ago:'2h ago'},
+  {id:'J0044',script:'db_insert_records.py',    srv:'db-01',  user:'Arjun Desai',   trigger:'manual',status:'failed', dur:'9s',    ago:'3h ago'},
+  {id:'J0043',script:'cleanup_logs.sh',         srv:'prod-02',user:'Rahul Khanna',  trigger:'manual',status:'success',dur:'4s',    ago:'4h ago'},
+  {id:'J0042',script:'user_activity_report.py', srv:'prod-02',user:'scheduler',     trigger:'cron',  status:'running',dur:'—',    ago:'just now'},
+  {id:'J0041',script:'finance_reconcile.py',    srv:'prod-01',user:'Priya Mehta',   trigger:'api',   status:'failed', dur:'3s',    ago:'6h ago'},
+  {id:'J0040',script:'health_check.sh',         srv:'prod-01',user:'scheduler',     trigger:'cron',  status:'success',dur:'2s',    ago:'5m ago'},
+];
+const API_KEYS = [
+  {name:'ETL Pipeline',     key:'sk_live_et7x...k2a', owner:'Arjun Desai',  scope:'operator', used:'2h ago',   active:true},
+  {name:'BI Dashboard',     key:'sk_live_bi4d...9f1', owner:'Priya Mehta',  scope:'viewer',   used:'just now', active:true},
+  {name:'Nightly Cron',     key:'sk_live_cr8n...7p4', owner:'Arjun Desai',  scope:'manager',  used:'6h ago',   active:true},
+  {name:'Deprecated',       key:'sk_live_dp2x...0q9', owner:'Rahul Khanna', scope:'operator', used:'32d ago',  active:false},
+];
+const SERVERS = [
+  {name:'prod-01', ip:'10.0.1.10', os:'Ubuntu 22.04', cpu:34, mem:61, disk:48, status:'online',  scripts:7, uptime:'99.97%'},
+  {name:'prod-02', ip:'10.0.1.11', os:'Ubuntu 22.04', cpu:18, mem:44, disk:31, status:'online',  scripts:4, uptime:'99.99%'},
+  {name:'db-01',   ip:'10.0.1.20', os:'Debian 11',    cpu:72, mem:83, disk:77, status:'online',  scripts:3, uptime:'99.95%'},
+];
+const LOG_DATA = [
+  {ts:'08:00:01',lvl:'sys', txt:'ScriptOps v2.0.0 daemon started. Loaded 14 scripts, 9 schedules.'},
+  {ts:'08:00:03',lvl:'',    txt:'Connected to prod-01 (10.0.1.10) ✓'},
+  {ts:'08:00:03',lvl:'',    txt:'Connected to prod-02 (10.0.1.11) ✓'},
+  {ts:'08:00:04',lvl:'',    txt:'Connected to db-01   (10.0.1.20) ✓'},
+  {ts:'08:00:05',lvl:'sys', txt:'All servers online. Scheduler active.'},
+  {ts:'06:00:01',lvl:'inf', txt:'CRON: finance_reconcile.py → prod-01 [J0041]'},
+  {ts:'06:00:04',lvl:'err', txt:'FAILED [J0041]: psycopg2.OperationalError: SSL connection terminated unexpectedly'},
+  {ts:'06:00:04',lvl:'err', txt:'finance_reconcile.py — exit code 1. Duration: 3s.'},
+  {ts:'08:00:06',lvl:'inf', txt:'CRON: health_check.sh → prod-01 [J0040]'},
+  {ts:'08:00:08',lvl:'ok',  txt:'health_check.sh — all 12 endpoints responding [J0040]. Duration: 2s.'},
+  {ts:'09:15:00',lvl:'inf', txt:'MANUAL: generate_sales_report.py → prod-01 [J0047] (user: priya)'},
+  {ts:'09:15:01',lvl:'',    txt:'SSH session opened. Running: python3 /opt/scripts/reports/generate_sales_report.py'},
+  {ts:'09:15:01',lvl:'',    txt:'Connecting to reporting DB... OK'},
+  {ts:'09:15:03',lvl:'',    txt:'Querying sales data for period: 2024-05-01 to 2024-05-31...'},
+  {ts:'09:15:18',lvl:'',    txt:'Fetched 18,492 rows. Computing aggregations...'},
+  {ts:'09:15:34',lvl:'',    txt:'Writing to /tmp/sales_may2024.csv (2.1 MB)'},
+  {ts:'09:15:38',lvl:'ok',  txt:'generate_sales_report.py — completed [J0047]. Output: /tmp/sales_may2024.csv. Duration: 38s'},
+  {ts:'09:30:01',lvl:'inf', txt:'MANUAL: db_insert_records.py → db-01 [J0044] (user: arjun)'},
+  {ts:'09:30:02',lvl:'',    txt:'SSH session opened. Running: python3 /opt/scripts/db/db_insert_records.py'},
+  {ts:'09:30:10',lvl:'err', txt:'FAILED [J0044]: psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "products_pkey"'},
+  {ts:'09:30:10',lvl:'err', txt:'DETAIL: Key (product_id)=(PRD-00142) already exists. Transaction rolled back. No rows committed.'},
+  {ts:'10:00:00',lvl:'inf', txt:'CRON: health_check.sh → prod-01 [J0048]'},
+  {ts:'10:00:02',lvl:'ok',  txt:'health_check.sh — all 12 endpoints responding [J0048]. Duration: 2s.'},
+  {ts:'11:12:44',lvl:'inf', txt:'MANUAL: user_activity_report.py → prod-02 [J0042] (user: scheduler/cron)'},
+  {ts:'11:12:45',lvl:'',    txt:'SSH session opened. Running: python3 /opt/scripts/reports/user_activity_report.py'},
+  {ts:'11:12:45',lvl:'',    txt:'Fetching user events from analytics DB...'},
+];
+const STREAM_LINES = [
+  {d:200,  c:'',   t:'SSH session opened on prod-01. Authenticating...'},
+  {d:400,  c:'ok', t:'Authentication successful.'},
+  {d:600,  c:'',   t:'Running: python3 /opt/scripts/reports/generate_sales_report.py --month=2024-06'},
+  {d:1000, c:'',   t:'[INFO] Connecting to reporting database...'},
+  {d:1400, c:'ok', t:'[INFO] DB connection established. Pool size: 5'},
+  {d:1800, c:'',   t:'[INFO] Querying: SELECT * FROM sales WHERE date >= 2024-06-01 AND date < 2024-07-01'},
+  {d:2600, c:'',   t:'[INFO] Fetched 21,337 rows in 0.8s'},
+  {d:3200, c:'',   t:'[INFO] Computing: revenue, avg_order_value, conversion_rate, by SKU...'},
+  {d:4200, c:'warn',t:'[WARN] 4 rows with NULL region_code — assigned to "UNKNOWN"'},
+  {d:5000, c:'',   t:'[INFO] Writing output to /tmp/sales_june2024.csv (2.4 MB)...'},
+  {d:5800, c:'ok', t:'[INFO] File written successfully.'},
+  {d:6200, c:'',   t:'[INFO] Sending email to distribution list (8 recipients)...'},
+  {d:7000, c:'ok', t:'[INFO] Email dispatched via SMTP relay.'},
+  {d:7200, c:'ok', t:''},
+  {d:7200, c:'ok', t:'✓ generate_sales_report.py completed successfully. Duration: 38s. Exit code: 0'},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let CU = null;  // current user object
+let curScript = null;
+let liveInterval = null;
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+function login(role) {
+  CU = {...USERS[role]};
+  document.getElementById('login').style.display = 'none';
+  const av = document.getElementById('sb-av');
+  av.textContent = CU.init;
+  av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${CU.bg};color:${CU.col};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;flex-shrink:0;`;
+  document.getElementById('sb-name').textContent = CU.name;
+  document.getElementById('sb-role').textContent = CU.role;
+  document.getElementById('ov-greeting').textContent = `Welcome, ${CU.name.split(' ')[0]} · ${CU.role}`;
+  // Lock admin-only nav
+  const isAdmin = CU.role === 'admin';
+  ['ni-users','ni-api','ni-servers'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.opacity = isAdmin ? '1' : '0.3';
+    el.style.pointerEvents = isAdmin ? '' : 'none';
+  });
+  ['btn-add-script','btn-add-sched','btn-add-user','btn-gen-key','btn-add-srv'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAdmin ? '' : 'none';
+  });
+  renderAll();
+  nav('overview');
+  startLiveStream();
+}
+function logout() {
+  CU = null;
+  clearInterval(liveInterval);
+  document.getElementById('login').style.display = 'flex';
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function nav(pg) {
+  document.querySelectorAll('.pg').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+  document.getElementById('pg-' + pg).classList.add('on');
+  document.querySelectorAll('.ni').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(`'${pg}'`)) n.classList.add('on');
+  });
+}
+
+// ─── PERMISSIONS ─────────────────────────────────────────────────────────────
+function canRun(script) {
+  if (!CU) return false;
+  // Special rules per spec:
+  if (script.cat === 'db' && (script.id === 'db_insert' || script.id === 'db_update')) {
+    return CU.role === 'admin';
+  }
+  if (script.cat === 'report') return ['admin','manager'].includes(CU.role);
+  if (script.cat === 'shell') return ['admin','operator'].includes(CU.role);
+  if (script.cat === 'db') return ['admin','manager'].includes(CU.role);
+  if (script.cat === 'cron') return CU.role === 'admin';
+  return RLVL[CU.role] >= RLVL[script.minRole];
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function roleBadge(r) {
+  const m = {admin:'t-adm',manager:'t-mgr',operator:'t-opr',viewer:'t-vwr'};
+  return `<span class="tag ${m[r]||''}">${r}</span>`;
+}
+function catTag(s) {
+  const map = {report:'t-rp',db:'t-db',shell:'t-sh',cron:'t-cr',python:'t-py'};
+  return `<span class="tag ${map[s.cat]||''}">${s.cat}</span> <span class="tag t-py" style="background:var(--bg3);color:var(--text2);">${s.type==='python'?'py':'sh'}</span>`;
+}
+function statPill(s) {
+  const m = {success:'sp-ok',failed:'sp-err',running:'sp-run',pending:'sp-pend',scheduled:'sp-sched'};
+  const dot = s==='running' ? `<span class="dot pulse"></span>` : `<span class="dot"></span>`;
+  return `<span class="sp ${m[s]||''}">${dot}${s}</span>`;
+}
+function triggerBadge(t) {
+  if (t==='cron')   return `<span class="tag t-cr">cron</span>`;
+  if (t==='api')    return `<span class="tag t-py" style="background:var(--blue-d);color:var(--blue)">api</span>`;
+  return `<span class="tag t-sv">manual</span>`;
+}
+function mbar(pct, col) {
+  return `<div class="mbar"><div class="mbar-fill" style="width:${pct}%;background:${col}"></div></div>`;
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderOvQuick(); renderOvExecs();
+  renderScripts();
+  renderExecs();
+  renderSched();
+  renderLogs();
+  renderUsers();
+  renderApiKeys();
+  renderServers();
+  populateSchedSelect();
+  updateRunBadge();
+}
+
+// ─── OVERVIEW ────────────────────────────────────────────────────────────────
+function renderOvQuick() {
+  const el = document.getElementById('ov-quick');
+  const runnable = SCRIPTS.filter(s => canRun(s)).slice(0,4);
+  if (!runnable.length) {
+    el.innerHTML = `<div class="tiny dim mono" style="padding:12px 0">No scripts available for your role.</div>`;
+    return;
+  }
+  el.innerHTML = runnable.map(s =>
+    `<div class="si">
+      <div class="si-ico">${s.ico}</div>
+      <div class="si-info">
+        <div class="si-name">${s.name} ${catTag(s)}</div>
+        <div class="si-desc">${s.desc}</div>
+      </div>
+      <div class="si-acts">
+        <button class="btn btn-run btn-sm" onclick="openExec('${s.id}')">▷ Run</button>
+      </div>
+    </div>`
+  ).join('');
+}
+function renderOvExecs() {
+  document.getElementById('ov-execs').innerHTML = EXECS.slice(0,6).map(e =>
+    `<tr>
+      <td style="color:var(--text0);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.script}</td>
+      <td class="dim tiny mono">${e.user.split(' ')[0]}</td>
+      <td>${statPill(e.status)}</td>
+      <td class="dim tiny mono">${e.ago}</td>
+    </tr>`
+  ).join('');
+}
+
+// ─── SCRIPTS ─────────────────────────────────────────────────────────────────
+function renderScripts() {
+  const filterVal = document.getElementById('scripts-filter')?.value || '';
+  const hasLocked = SCRIPTS.some(s => !canRun(s));
+  document.getElementById('sc-perm-alert').classList.toggle('hidden', !hasLocked);
+  const list = filterVal ? SCRIPTS.filter(s => s.cat === filterVal) : SCRIPTS;
+  document.getElementById('nb-scripts').textContent = `${list.length}`;
+  document.getElementById('scripts-list').innerHTML = list.map(s => {
+    const ok = canRun(s);
+    return `<div class="si${ok?'':' locked'}">
+      <div class="si-ico">${s.ico}</div>
+      <div class="si-info">
+        <div class="si-name">
+          ${s.name} ${catTag(s)}
+          <span class="tag t-sv">⬡ ${s.srv}</span>
+          ${!ok ? `<span class="tag" style="background:var(--red-d);color:var(--red)">🔒 ${s.minRole}</span>` : ''}
+        </div>
+        <div class="si-desc">${s.desc}</div>
+        <div class="si-meta"><span>${s.path}</span></div>
+      </div>
+      <div class="si-acts">
+        ${ok && (CU.role==='admin'||CU.role==='manager') ? `<button class="btn btn-sched btn-sm" onclick="openSchedFor('${s.id}')">⏱</button>` : ''}
+        <button class="btn btn-g btn-sm" onclick="openStreamViewer('${s.id}')">Logs</button>
+        <button class="btn btn-run btn-sm" ${ok?'':'disabled'} onclick="${ok?`openExec('${s.id}')`:''}">▷ Run</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── EXECUTIONS ───────────────────────────────────────────────────────────────
+function renderExecs() {
+  updateRunBadge();
+  document.getElementById('exec-tbody').innerHTML = EXECS.map(e =>
+    `<tr>
+      <td class="mono tiny" style="color:var(--cyan)">${e.id}</td>
+      <td style="color:var(--text0);font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.script}</td>
+      <td class="mono tiny dim">${e.srv}</td>
+      <td class="tiny" style="color:var(--text1)">${e.user}</td>
+      <td>${triggerBadge(e.trigger)}</td>
+      <td>${statPill(e.status)}</td>
+      <td class="mono tiny dim">${e.dur}</td>
+      <td>
+        <button class="btn btn-g btn-xs" onclick="openStreamViewer('${e.id}')">
+          ${e.status==='running'?'<span class="dot pulse" style="color:var(--cyan)"></span> Stream':'View'}
+        </button>
+      </td>
+    </tr>`
+  ).join('');
+}
+function updateRunBadge() {
+  const running = EXECS.filter(e => e.status === 'running').length;
+  const nb = document.getElementById('nb-run');
+  const badge = document.getElementById('live-run-badge');
+  nb.textContent = running; nb.style.display = running>0?'':'none';
+  if (badge) { badge.style.display = running>0?'':'none'; document.getElementById('live-run-count').textContent = running; }
+}
+
+// ─── SCHEDULER ───────────────────────────────────────────────────────────────
+function renderSched() {
+  // Upcoming
+  const upcoming = SCHEDS.filter(s=>s.enabled).slice(0,5);
+  document.getElementById('sched-upcoming').innerHTML = upcoming.map(s =>
+    `<div class="sched-item">
+      <div class="sched-time">${s.next}</div>
+      <div class="sched-info">
+        <div class="sched-name">${s.script}</div>
+        <div class="sched-cron">${s.human} · ${s.srv}</div>
+      </div>
+      ${statPill(s.status)}
+    </div>`
+  ).join('');
+
+  // All schedules
+  document.getElementById('sched-list').innerHTML = SCHEDS.map(s =>
+    `<div class="sched-item">
+      <div style="flex:1">
+        <div class="sched-name">${s.script}</div>
+        <div class="sched-cron">${s.cron} — ${s.human}</div>
+      </div>
+      <div class="toggle-wrap">
+        ${(CU.role==='admin'||CU.role==='manager') ? `<div class="tog${s.enabled?' on':''}" onclick="toggleSched(this,'${s.id}')"></div>` : (s.enabled ? `<span class="sp sp-ok" style="font-size:9px">on</span>` : `<span class="sp sp-err" style="font-size:9px">off</span>`)}
+        <span class="tiny mono dim">${s.enabled?'active':'paused'}</span>
+      </div>
+    </div>`
+  ).join('');
+
+  // History table
+  document.getElementById('sched-hist').innerHTML = SCHEDS.map(s =>
+    `<tr>
+      <td style="color:var(--text0)">${s.script}</td>
+      <td class="mono tiny" style="color:var(--cyan)">${s.cron}</td>
+      <td class="tiny dim mono">${s.lastRun}</td>
+      <td class="tiny" style="color:var(--purple);font-family:var(--mono)">${s.next}</td>
+      <td>${statPill(s.status)}</td>
+      <td class="tiny mono dim">${s.avgDur}</td>
+    </tr>`
+  ).join('');
+}
+function toggleSched(el, id) {
+  if (CU.role!=='admin' && CU.role!=='manager') return;
+  el.classList.toggle('on');
+  const next = el.nextElementSibling;
+  next.textContent = el.classList.contains('on') ? 'active' : 'paused';
+  const sc = SCHEDS.find(s=>s.id===id);
+  if (sc) sc.enabled = el.classList.contains('on');
+}
+function populateSchedSelect() {
+  const sel = document.getElementById('m-sched-script');
+  if (!sel) return;
+  sel.innerHTML = SCRIPTS.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function openSchedFor(id) {
+  populateSchedSelect();
+  document.getElementById('m-sched-script').value = id;
+  openM('m-sched');
+}
+// Live cron expression interpreter
+document.addEventListener('input', e => {
+  if (e.target.id === 'm-sched-cron') {
+    const c = e.target.value.trim().split(/\s+/);
+    if (c.length !== 5) { document.getElementById('m-sched-human').value = 'Invalid cron expression'; return; }
+    const [min,hr,dom,mon,dow] = c;
+    let parts = [];
+    if (dow==='*' && dom==='*') parts.push('Every day');
+    else if (dom==='*') {
+      const days = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat','1-5':'weekdays','1-7':'every day'};
+      parts.push('Every ' + (days[dow]||dow));
+    } else parts.push(`Day ${dom}`);
+    if (min==='*' && hr==='*') parts.push('every minute');
+    else if (min.startsWith('*/')) parts.push(`every ${min.slice(2)} min`);
+    else parts.push(`at ${hr.padStart(2,'0')}:${min.padStart(2,'0')}`);
+    document.getElementById('m-sched-human').value = parts.join(', ');
+  }
+});
+
+// ─── LOGS ─────────────────────────────────────────────────────────────────────
+function renderLogs() {
+  const sf = document.getElementById('log-filter-script').value;
+  const lf = document.getElementById('log-filter-level').value;
+  let lines = LOG_DATA;
+  if (sf) lines = lines.filter(l => l.txt.includes(sf));
+  if (lf) lines = lines.filter(l => l.lvl === lf);
+  const term = document.getElementById('log-term');
+  term.innerHTML = lines.map(l => {
+    const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf',sys:'sys'}[l.lvl] || '';
+    return `<div><span class="ts">[${l.ts}]</span> <span class="${cls}">${escHtml(l.txt)}</span></div>`;
+  }).join('') + '<div><span class="cursor"></span></div>';
+}
+function scrollLogsBottom() {
+  const t = document.getElementById('log-term'); t.scrollTop = t.scrollHeight;
+}
+
+// ─── USERS ────────────────────────────────────────────────────────────────────
+function renderUsers() {
+  document.getElementById('users-tbody').innerHTML = Object.values(USERS).map(u => {
+    const isMe = CU && u.email === CU.email;
+    return `<tr>
+      <td>
+        <div class="fac gap8">
+          <div style="width:26px;height:26px;border-radius:50%;background:${u.bg};color:${u.col};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;flex-shrink:0">${u.init}</div>
+          <div>
+            <div style="font-size:12px;color:var(--text0)">${u.name}${isMe?' <span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
+            <div style="font-size:10px;color:var(--text2);font-family:var(--mono)">${u.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>${roleBadge(u.role)}</td>
+      <td class="tiny mono dim">Today</td>
+      <td>${CU?.role==='admin' && !isMe ? `<button class="btn btn-g btn-xs" onclick="editUser()">Edit</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+}
+function editUser() { alert('User edit form — connect to your backend API here.'); }
+
+// ─── API KEYS ─────────────────────────────────────────────────────────────────
+function renderApiKeys() {
+  document.getElementById('api-tbody').innerHTML = API_KEYS.map((k,i) =>
+    `<tr>
+      <td style="color:var(--text0)">${k.name}</td>
+      <td class="mono tiny">${k.key}</td>
+      <td class="dim tiny">${k.owner}</td>
+      <td>${roleBadge(k.scope)}</td>
+      <td class="dim tiny mono">${k.used}</td>
+      <td>${k.active ? `<span class="sp sp-ok">active</span>` : `<span class="sp sp-err">revoked</span>`}</td>
+      <td>${CU?.role==='admin' && k.active ? `<button class="btn btn-danger btn-xs" onclick="revokeKey(${i})">Revoke</button>` : ''}</td>
+    </tr>`
+  ).join('');
+}
+function genKey() {
+  if (CU?.role !== 'admin') return;
+  const r = () => Math.random().toString(36).slice(2,6);
+  API_KEYS.unshift({name:`Key-${Date.now().toString().slice(-4)}`,key:`sk_live_${r()}...${r().slice(0,3)}`,owner:CU.name,scope:'operator',used:'Never',active:true});
+  renderApiKeys();
+}
+function revokeKey(i) { API_KEYS[i].active = false; renderApiKeys(); }
+
+// ─── SERVERS ──────────────────────────────────────────────────────────────────
+function renderServers() {
+  document.getElementById('servers-grid').innerHTML = SERVERS.map(s =>
+    `<div class="srv-card">
+      <div class="srv-hd">
+        <div class="srv-dot ${s.status==='online'?'srv-on':'srv-off'}"></div>
+        <div style="flex:1">
+          <div style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text0)">${s.name}</div>
+          <div style="font-size:10px;color:var(--text2);font-family:var(--mono)">${s.ip} · ${s.os}</div>
+        </div>
+        ${statPill(s.status)}
+      </div>
+      <div style="margin-bottom:9px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);font-family:var(--mono);margin-bottom:3px">
+          <span>CPU</span><span style="color:${s.cpu>70?'var(--amber)':'var(--text1)'}">${s.cpu}%</span>
+        </div>
+        ${mbar(s.cpu, s.cpu>70?'var(--amber)':'var(--cyan)')}
+      </div>
+      <div style="margin-bottom:9px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);font-family:var(--mono);margin-bottom:3px">
+          <span>Memory</span><span style="color:${s.mem>80?'var(--red)':'var(--text1)'}">${s.mem}%</span>
+        </div>
+        ${mbar(s.mem, s.mem>80?'var(--red)':'var(--blue)')}
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);font-family:var(--mono);margin-bottom:3px">
+          <span>Disk</span><span style="color:${s.disk>75?'var(--amber)':'var(--text1)'}">${s.disk}%</span>
+        </div>
+        ${mbar(s.disk, s.disk>75?'var(--amber)':'var(--green)')}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px">
+        <span style="font-size:10px;color:var(--text2);font-family:var(--mono)">${s.scripts} scripts · ${s.uptime} uptime</span>
+        <button class="btn btn-g btn-xs">SSH Details</button>
+      </div>
+    </div>`
+  ).join('');
+}
+
+// ─── EXECUTION ───────────────────────────────────────────────────────────────
+function openExec(id) {
+  curScript = SCRIPTS.find(s => s.id === id);
+  if (!curScript) return;
+  const ok = canRun(curScript);
+  document.getElementById('m-exec-title').textContent = `${curScript.ico} Execute Script`;
+  document.getElementById('m-exec-sub').textContent = `${curScript.name} · ${curScript.srv}`;
+  const locked = document.getElementById('m-exec-locked');
+  const runBtn = document.getElementById('m-exec-run');
+  locked.classList.toggle('hidden', ok);
+  document.getElementById('m-exec-need').textContent = curScript.minRole;
+  runBtn.disabled = !ok;
+  document.getElementById('m-exec-pbar-w').classList.add('hidden');
+  document.getElementById('m-exec-pbar').style.width = '0%';
+  document.getElementById('m-exec-stream').classList.add('hidden');
+  document.getElementById('m-exec-stream').innerHTML = '';
+  runBtn.innerHTML = '▷ Run Script';
+  openM('m-exec');
+}
+
+function doExec() {
+  const btn = document.getElementById('m-exec-run');
+  btn.disabled = true; btn.innerHTML = '⏳ Launching...';
+  const pbarW = document.getElementById('m-exec-pbar-w');
+  const pbar = document.getElementById('m-exec-pbar');
+  const stream = document.getElementById('m-exec-stream');
+  pbarW.classList.remove('hidden');
+  stream.classList.remove('hidden');
+  stream.innerHTML = '';
+
+  let pct = 0, lineIdx = 0;
+  const lines = STREAM_LINES;
+
+  function addLine(l) {
+    const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf'}[l.c] || '';
+    const now = new Date().toLocaleTimeString('en-IN',{hour12:false});
+    stream.innerHTML += `<div><span class="ts">[${now}]</span> <span class="${cls}">${escHtml(l.t)}</span></div>`;
+    stream.scrollTop = stream.scrollHeight;
+  }
+
+  const pbarIv = setInterval(() => {
+    pct = Math.min(pct + Math.random()*12+4, 98);
+    pbar.style.width = pct + '%';
+  }, 300);
+
+  function schedLine() {
+    if (lineIdx >= lines.length) {
+      clearInterval(pbarIv);
+      pbar.style.width = '100%';
+      btn.innerHTML = '✓ Completed';
+      setTimeout(() => { closeM('m-exec'); addLiveLog(curScript); }, 600);
+      return;
+    }
+    const l = lines[lineIdx++];
+    if (l.t) addLine(l);
+    setTimeout(schedLine, lines[lineIdx]?.d - (lines[lineIdx-1]?.d||0) || 400);
+  }
+  setTimeout(schedLine, lines[0].d);
+}
+
+function addLiveLog(script) {
+  const lt = document.getElementById('live-term');
+  if (!lt) return;
+  const ts = () => new Date().toLocaleTimeString('en-IN',{hour12:false});
+  lt.innerHTML += `<div><span class="ts">[${ts()}]</span> <span class="inf">MANUAL: ${script.name} → ${script.srv} (${CU.name})</span></div>`;
+  setTimeout(()=>{ lt.innerHTML += `<div><span class="ts">[${ts()}]</span> <span class="">Running script...</span></div>`; lt.scrollTop=lt.scrollHeight;},800);
+  setTimeout(()=>{ lt.innerHTML += `<div><span class="ts">[${ts()}]</span> <span class="ok">${script.name} — completed successfully ✓</span></div><div><span class="cursor"></span></div>`; lt.scrollTop=lt.scrollHeight;},4000);
+}
+
+// ─── STREAM VIEWER ───────────────────────────────────────────────────────────
+function openStreamViewer(id) {
+  const s = SCRIPTS.find(x => x.id === id) || EXECS.find(x => x.id === id);
+  const name = s?.name || s?.script || id;
+  document.getElementById('m-stream-title').textContent = '⬡ Output Stream';
+  document.getElementById('m-stream-sub').textContent = name + ' — historical log';
+  const term = document.getElementById('m-stream-term');
+  const badge = document.getElementById('m-stream-badge');
+  badge.innerHTML = '<span class="dot"></span> COMPLETED';
+  badge.style.background = 'var(--green-d)'; badge.style.color = 'var(--green)';
+  term.innerHTML = LOG_DATA.slice(0,18).map(l => {
+    const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf',sys:'sys'}[l.lvl]||'';
+    return `<div><span class="ts">[${l.ts}]</span> <span class="${cls}">${escHtml(l.txt)}</span></div>`;
+  }).join('');
+  openM('m-stream');
+  setTimeout(()=>{ term.scrollTop = term.scrollHeight; }, 50);
+}
+
+// ─── LIVE STREAM ─────────────────────────────────────────────────────────────
+function startLiveStream() {
+  const lt = document.getElementById('live-term');
+  lt.innerHTML = `<div><span class="ts">[system]</span> <span class="sys">ScriptOps daemon connected. Streaming live output.</span></div>`;
+  const fake = [
+    {c:'inf',t:'health_check.sh → prod-01 — starting'},
+    {c:'ok', t:'health_check.sh — all 12 endpoints OK. Duration: 2s'},
+    {c:'inf',t:'CRON trigger: sync_inventory.py (next in 14 min)'},
+    {c:'',   t:'Monitoring prod-01 · prod-02 · db-01 ...'},
+    {c:'warn',t:'db-01 CPU at 72% — within acceptable range'},
+  ];
+  let i = 0;
+  liveInterval = setInterval(() => {
+    if (!CU) { clearInterval(liveInterval); return; }
+    const l = fake[i % fake.length]; i++;
+    const ts = new Date().toLocaleTimeString('en-IN',{hour12:false});
+    lt.innerHTML += `<div><span class="ts">[${ts}]</span> <span class="${l.c}">${l.t}</span></div>`;
+    lt.scrollTop = lt.scrollHeight;
+    // Keep max 30 lines
+    const lines = lt.querySelectorAll('div');
+    if (lines.length > 30) lines[0].remove();
+  }, 3500);
+}
+
+// ─── MODALS ───────────────────────────────────────────────────────────────────
+function openM(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeM(id) { document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.mover').forEach(m => {
+  m.addEventListener('click', e => { if (e.target===m) m.classList.add('hidden'); });
+});
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
