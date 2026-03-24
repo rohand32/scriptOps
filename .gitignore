@@ -1,0 +1,5 @@
+scriptops-api/.venv/
+scriptops-api/__pycache__/
+scriptops-api/**/__pycache__/
+scriptops-api/.pytest_cache/
+scriptops-api/data/

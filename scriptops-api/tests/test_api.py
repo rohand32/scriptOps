@@ -217,7 +217,7 @@ class TestJobManagement:
                   trigger="api", params=None):
         import uuid
         from datetime import datetime, timezone
-        job_id = f"J{str(uuid.uuid4().int)[:5].upper()}"
+        job_id = "J" + uuid.uuid4().hex[:8].upper()
         return {
             "job_id": job_id,
             "script_id": script_id,

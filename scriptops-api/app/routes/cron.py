@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
+from enum import Enum
+from typing import Optional, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Path
 
@@ -23,74 +24,18 @@ from app.services.executor import (
     create_job, execute_script, get_job,
     list_jobs, SCRIPT_REGISTRY, TriggerType,
 )
+from app.services import schedule_store
+from app.services.scheduler_worker import get_scheduler, resync_jobs
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 router = APIRouter()
 
-# ── In-memory schedule store ──────────────────────────────────────────────────
-_SCHEDULES: Dict[str, dict] = {
-    "sc_001": {
-        "schedule_id": "sc_001", "script_id": "gen_sales",
-        "script_name": "generate_sales_report.py",
-        "cron_expr": "0 8 * * 1-5", "human_readable": "Weekdays at 08:00",
-        "server": "prod-01", "enabled": True, "notify_on": "failure",
-        "params": {}, "description": "Daily sales report, Mon–Fri",
-        "last_run": "2024-06-10T08:00:01Z", "next_run": "2024-06-11T08:00:00Z",
-        "last_status": "success", "created_by": "Arjun Desai",
-        "created_at": "2024-01-10T09:00:00Z",
-    },
-    "sc_002": {
-        "schedule_id": "sc_002", "script_id": "db_backup",
-        "script_name": "db_backup.sh",
-        "cron_expr": "0 2 * * *", "human_readable": "Daily at 02:00 AM",
-        "server": "db-01", "enabled": True, "notify_on": "always",
-        "params": {}, "description": "Nightly PostgreSQL backup to S3",
-        "last_run": "2024-06-11T02:00:02Z", "next_run": "2024-06-12T02:00:00Z",
-        "last_status": "success", "created_by": "Arjun Desai",
-        "created_at": "2024-01-10T09:00:00Z",
-    },
-    "sc_003": {
-        "schedule_id": "sc_003", "script_id": "cleanup",
-        "script_name": "cleanup_logs.sh",
-        "cron_expr": "0 0 * * 0", "human_readable": "Sundays at midnight",
-        "server": "prod-01", "enabled": True, "notify_on": "failure",
-        "params": {}, "description": "Weekly log rotation",
-        "last_run": "2024-06-09T00:00:01Z", "next_run": "2024-06-16T00:00:00Z",
-        "last_status": "success", "created_by": "Arjun Desai",
-        "created_at": "2024-01-15T09:00:00Z",
-    },
-    "sc_004": {
-        "schedule_id": "sc_004", "script_id": "sched_sales",
-        "script_name": "scheduled_sales_push.py",
-        "cron_expr": "30 23 * * *", "human_readable": "Daily at 23:30",
-        "server": "prod-01", "enabled": True, "notify_on": "always",
-        "params": {}, "description": "Nightly data warehouse push",
-        "last_run": "2024-06-10T23:30:01Z", "next_run": "2024-06-11T23:30:00Z",
-        "last_status": "success", "created_by": "Arjun Desai",
-        "created_at": "2024-02-01T09:00:00Z",
-    },
-    "sc_005": {
-        "schedule_id": "sc_005", "script_id": "health",
-        "script_name": "health_check.sh",
-        "cron_expr": "*/5 * * * *", "human_readable": "Every 5 minutes",
-        "server": "prod-01", "enabled": True, "notify_on": "failure",
-        "params": {}, "description": "Endpoint health monitoring",
-        "last_run": "2024-06-11T11:45:02Z", "next_run": "2024-06-11T11:50:00Z",
-        "last_status": "success", "created_by": "Arjun Desai",
-        "created_at": "2024-01-10T09:00:00Z",
-    },
-    "sc_006": {
-        "schedule_id": "sc_006", "script_id": "weekly_digest",
-        "script_name": "weekly_digest.py",
-        "cron_expr": "0 7 * * 1", "human_readable": "Mondays at 07:00",
-        "server": "prod-01", "enabled": True, "notify_on": "failure",
-        "params": {}, "description": "Monday morning management digest",
-        "last_run": "2024-06-10T07:00:01Z", "next_run": "2024-06-17T07:00:00Z",
-        "last_status": "success", "created_by": "Arjun Desai",
-        "created_at": "2024-01-10T09:00:00Z",
-    },
-}
+
+def _resync_scheduler() -> None:
+    sched = get_scheduler()
+    if sched is not None:
+        resync_jobs(sched)
 
 
 def _human_cron(expr: str) -> str:
@@ -131,7 +76,7 @@ async def list_schedules(
     enabled: Optional[bool] = Query(None),
     user: TokenUser = Depends(require_role(Role.manager, Role.admin)),
 ):
-    items = list(_SCHEDULES.values())
+    items = list(schedule_store.all_schedules().values())
     if enabled is not None:
         items = [s for s in items if s["enabled"] == enabled]
     return {"items": items, "total": len(items)}
@@ -147,7 +92,7 @@ async def get_schedule(
     schedule_id: str = Path(..., example="sc_001"),
     user: TokenUser = Depends(require_role(Role.manager, Role.admin)),
 ):
-    sc = _SCHEDULES.get(schedule_id)
+    sc = schedule_store.get_schedule(schedule_id)
     if not sc:
         raise HTTPException(404, detail={"error":"not_found","message":f"Schedule {schedule_id} not found"})
     return sc
@@ -188,7 +133,8 @@ async def create_schedule(
         "created_by":    user.name,
         "created_at":    now,
     }
-    _SCHEDULES[sc_id] = sc
+    schedule_store.upsert_schedule(sc)
+    _resync_scheduler()
     logger.info(f"Schedule {sc_id} created by {user.name}: {req.cron_expr} → {script['name']}")
     return sc
 
@@ -205,7 +151,7 @@ async def update_schedule(
     schedule_id: str = Path(...),
     user: TokenUser = Depends(require_role(Role.admin)),
 ):
-    sc = _SCHEDULES.get(schedule_id)
+    sc = schedule_store.get_schedule(schedule_id)
     if not sc:
         raise HTTPException(404, detail={"error":"not_found","message":f"Schedule {schedule_id} not found"})
 
@@ -213,9 +159,12 @@ async def update_schedule(
     if "cron_expr" in updates:
         updates["human_readable"] = _human_cron(updates["cron_expr"])
     if "notify_on" in updates:
-        updates["notify_on"] = updates["notify_on"].value
+        v = updates["notify_on"]
+        updates["notify_on"] = v.value if isinstance(v, Enum) else v
 
     sc.update(updates)
+    schedule_store.upsert_schedule(sc)
+    _resync_scheduler()
     logger.info(f"Schedule {schedule_id} updated by {user.name}: {list(updates.keys())}")
     return sc
 
@@ -232,9 +181,9 @@ async def delete_schedule(
     schedule_id: str = Path(...),
     user: TokenUser = Depends(require_role(Role.admin)),
 ):
-    if schedule_id not in _SCHEDULES:
+    if not schedule_store.delete_schedule(schedule_id):
         raise HTTPException(404, detail={"error":"not_found","message":f"Schedule {schedule_id} not found"})
-    del _SCHEDULES[schedule_id]
+    _resync_scheduler()
     logger.info(f"Schedule {schedule_id} deleted by {user.name}")
     return None
 
@@ -250,10 +199,12 @@ async def toggle_schedule(
     schedule_id: str = Path(...),
     user: TokenUser = Depends(require_role(Role.manager, Role.admin)),
 ):
-    sc = _SCHEDULES.get(schedule_id)
+    sc = schedule_store.get_schedule(schedule_id)
     if not sc:
         raise HTTPException(404, detail={"error":"not_found","message":f"Schedule {schedule_id} not found"})
     sc["enabled"] = not sc["enabled"]
+    schedule_store.upsert_schedule(sc)
+    _resync_scheduler()
     state = "enabled" if sc["enabled"] else "disabled"
     logger.info(f"Schedule {schedule_id} {state} by {user.name}")
     return {"schedule_id": schedule_id, "enabled": sc["enabled"],
@@ -282,7 +233,7 @@ async def trigger_schedule(
     schedule_id: str = Path(..., example="sc_001"),
     user: TokenUser = Depends(require_role(Role.manager, Role.admin)),
 ):
-    sc = _SCHEDULES.get(schedule_id)
+    sc = schedule_store.get_schedule(schedule_id)
     if not sc:
         raise HTTPException(404, detail={"error":"not_found","message":f"Schedule {schedule_id} not found"})
 
@@ -294,6 +245,10 @@ async def trigger_schedule(
         triggered_by=user.name,
         trigger=TriggerType.manual,
         server_override=server,
+        job_meta={
+            "notify_on": req.notify_on.value,
+            "schedule_id": schedule_id,
+        },
     )
     bg.add_task(execute_script, job["job_id"])
 
@@ -374,7 +329,7 @@ async def schedule_history(
     limit: int = Query(20, ge=1, le=100),
     user: TokenUser = Depends(require_role(Role.manager, Role.admin)),
 ):
-    sc = _SCHEDULES.get(schedule_id)
+    sc = schedule_store.get_schedule(schedule_id)
     if not sc:
         raise HTTPException(404, detail={"error":"not_found","message":"Schedule not found"})
     jobs, total = list_jobs(script_id=sc["script_id"], page=1, page_size=limit)
