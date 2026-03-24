@@ -316,3 +316,10 @@ class ExecutionListResponse(BaseModel):
 
 class CancelRequest(BaseModel):
     reason: Optional[str] = Field(None, max_length=300)
+
+
+# ── SCRIPTS (generic list / run) ─────────────────────────────────────────────
+
+class ScriptRunRequest(BaseModel):
+    params: Dict[str, Any] = Field(default_factory=dict, description="Script parameters (validated against allowed_params)")
+    server: Optional[str] = Field(None, description="Override default server id from registry")

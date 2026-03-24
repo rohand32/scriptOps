@@ -41,6 +41,14 @@ _PENDING_APPROVAL: Dict[str, dict] = {}
 _READ_SCRIPTS = {"db_export"}
 
 
+def _script_category_str(script: dict) -> str:
+    """Normalize script category to a string (enum or plain str from YAML)."""
+    cat = script.get("category")
+    if cat is None:
+        return ""
+    return cat.value if hasattr(cat, "value") else str(cat)
+
+
 def _write_audit(
     job_id: str,
     operation: DBOperation,
@@ -154,7 +162,7 @@ async def db_insert(
         )
 
     script = SCRIPT_REGISTRY.get(req.script_id)
-    if not script or script.get("category", "").value != "database":
+    if not script or _script_category_str(script) != "database":
         raise HTTPException(
             400,
             detail={"error":"invalid_script",

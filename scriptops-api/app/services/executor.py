@@ -17,7 +17,7 @@ import shlex
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Collection, Dict, List, Optional
 
 from app.models.schemas import JobStatus, TriggerType, ScriptCategory
 from app.utils.logger import setup_logger
@@ -28,8 +28,8 @@ logger = setup_logger(__name__)
 # ── In-memory job store (replace with Redis / DB in production) ───────────────
 _JOBS: Dict[str, dict] = {}
 
-# ── Script registry (maps script_id → metadata) ──────────────────────────────
-SCRIPT_REGISTRY: Dict[str, dict] = {
+# ── Built-in script registry (merged with config/scripts.yaml at import) ─────
+BUILTIN_SCRIPT_REGISTRY: Dict[str, dict] = {
     "gen_sales": {
         "name": "generate_sales_report.py",
         "category": ScriptCategory.report,
@@ -166,13 +166,14 @@ SCRIPT_REGISTRY: Dict[str, dict] = {
     },
 }
 
+# Merged registry (YAML overlay); assigned at module end after BUILTIN is defined
+SCRIPT_REGISTRY: Dict[str, dict] = {}
+
 
 # ─── Job helpers ──────────────────────────────────────────────────────────────
 
 def _make_job_id() -> str:
-    prefix = "J"
-    suffix = str(uuid.uuid4().int)[:5].upper()
-    return f"{prefix}{suffix}"
+    return "J" + uuid.uuid4().hex[:8].upper()
 
 
 def create_job(
@@ -181,6 +182,7 @@ def create_job(
     triggered_by: str,
     trigger: TriggerType,
     server_override: Optional[str] = None,
+    job_meta: Optional[Dict[str, Any]] = None,
 ) -> dict:
     script = SCRIPT_REGISTRY.get(script_id)
     if not script:
@@ -209,6 +211,8 @@ def create_job(
         "output_path":  None,
         "duration_ms":  None,
     }
+    if job_meta:
+        job["meta"] = job_meta
     _JOBS[job_id] = job
     return job
 
@@ -219,6 +223,7 @@ def get_job(job_id: str) -> Optional[dict]:
 
 def list_jobs(
     script_id: Optional[str] = None,
+    script_ids: Optional[Collection[str]] = None,
     status: Optional[str] = None,
     triggered_by: Optional[str] = None,
     page: int = 1,
@@ -227,6 +232,9 @@ def list_jobs(
     jobs = list(_JOBS.values())
     if script_id:
         jobs = [j for j in jobs if j["script_id"] == script_id]
+    if script_ids is not None:
+        allowed = set(script_ids)
+        jobs = [j for j in jobs if j["script_id"] in allowed]
     if status:
         jobs = [j for j in jobs if j["status"] == status]
     if triggered_by:
@@ -263,9 +271,6 @@ def _build_command(script: dict, params: Dict[str, Any]) -> str:
 
 async def execute_script(
     job_id: str,
-    ssh_host: str = "localhost",   # resolved from server registry in production
-    ssh_user: str = "deploy",
-    ssh_key:  str = "/etc/scriptops/keys/deploy.pem",
 ) -> None:
     """
     Executes the script over SSH.
@@ -284,11 +289,24 @@ async def execute_script(
         _fail_job(job_id, f"Script {job['script_id']} not in registry")
         return
 
+    # Resolve SSH target from config/servers.yaml (SCRIPTOPS_CONFIG_DIR)
+    from app.services.config_loader import get_server
+    import os
+
+    srv = get_server(job["server"])
+    ssh_host = srv.host if srv else os.environ.get("SCRIPTOPS_SSH_FALLBACK_HOST", "localhost")
+    ssh_user = srv.ssh_user if srv else os.environ.get("SCRIPTOPS_SSH_FALLBACK_USER", "deploy")
+    ssh_key = srv.ssh_key_path if srv else os.environ.get(
+        "SCRIPTOPS_SSH_FALLBACK_KEY", "/etc/scriptops/keys/deploy.pem"
+    )
+
     # Transition → running
     job["status"]     = JobStatus.running.value
     job["started_at"] = datetime.now(timezone.utc).isoformat()
-    job["output_lines"].append(_log_line("sys", f"SSH connect → {job['server']}"))
-    job["output_lines"].append(_log_line("sys", f"Authenticated as {ssh_user}"))
+    job["output_lines"].append(
+        _log_line("sys", f"SSH target {job['server']} → {ssh_host}:{getattr(srv, 'ssh_port', 22) if srv else 22}")
+    )
+    job["output_lines"].append(_log_line("sys", f"Authenticated as {ssh_user} (key: {ssh_key})"))
     job["output_lines"].append(
         _log_line("inf", f"Running: {_build_command(script, job['params'])}")
     )
@@ -331,6 +349,14 @@ async def execute_script(
     except Exception as exc:
         _fail_job(job_id, str(exc))
         logger.error(f"[{job_id}] failed: {exc}", exc_info=True)
+
+    # Post-run notifications (schedules / optional webhook)
+    try:
+        from app.services.notifications import maybe_notify_job
+
+        await maybe_notify_job(job)
+    except Exception as exc:
+        logger.warning("notification hook failed: %s", exc)
 
 
 # ─── Simulation helpers ──────────────────────────────────────────────────────
@@ -549,3 +575,23 @@ async def stream_job_output(job_id: str) -> AsyncGenerator[str, None]:
 
 def _sse_event(event: str, data: Any) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def refresh_registry() -> None:
+    """Reload scripts.yaml overlay (e.g. after admin file change)."""
+    global SCRIPT_REGISTRY
+    from app.services.config_loader import load_script_registry
+
+    SCRIPT_REGISTRY.clear()
+    SCRIPT_REGISTRY.update(load_script_registry())
+
+
+def _init_merged_registry() -> None:
+    from app.services.config_loader import load_script_registry
+
+    merged = load_script_registry()
+    SCRIPT_REGISTRY.clear()
+    SCRIPT_REGISTRY.update(merged)
+
+
+_init_merged_registry()

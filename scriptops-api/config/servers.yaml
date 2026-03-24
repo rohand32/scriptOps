@@ -1,0 +1,19 @@
+# Server execution targets (SSH). Keys are paths on the ScriptOps API host.
+# Override paths via SCRIPTOPS_CONFIG_DIR or SCRIPTOPS_SERVERS_FILE.
+
+servers:
+  - id: prod-01
+    host: "10.0.1.10"
+    ssh_port: 22
+    ssh_user: deploy
+    ssh_key_path: /etc/scriptops/keys/prod-01.pem
+  - id: prod-02
+    host: "10.0.1.11"
+    ssh_port: 22
+    ssh_user: deploy
+    ssh_key_path: /etc/scriptops/keys/prod-02.pem
+  - id: db-01
+    host: "10.0.1.20"
+    ssh_port: 22
+    ssh_user: deploy
+    ssh_key_path: /etc/scriptops/keys/db-01.pem

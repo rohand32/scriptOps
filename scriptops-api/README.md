@@ -3,15 +3,11 @@
 **FastAPI backend for the ScriptOps Internal Automation Platform.**  
 Authenticated REST + SSE endpoints to execute report scripts, trigger cron jobs manually, and run database operations — with role-based access control enforced on every route.
 
-The runnable application and tests live under **`scriptops-api/`** (extracted from the historical zip). Run `uvicorn` and `pip install` from that directory. The static UI is **`scriptops-dashboard.html`** at the repo root; configure it with your API base URL and API key. For production topology, CORS, SSE, and secrets, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
-
 ---
 
 ## Quick Start
 
 ```bash
-cd scriptops-api
-
 # Install dependencies
 pip install -r requirements.txt
 
@@ -416,9 +412,8 @@ python3 tests/test_api.py
 
 ## Production Checklist
 
-- Set **`SCRIPTOPS_CORS_ORIGINS`** to the exact origin(s) of the dashboard (see [DEPLOYMENT.md](DEPLOYMENT.md))
 - Replace `_KEY_STORE` dict with database-backed key store (PostgreSQL + bcrypt)
-- Replace `_JOBS` / in-memory job store with Redis or a proper job queue (Celery, ARQ) where needed; schedules are already persisted (SQLite by default)
+- Replace `_JOBS` / `_SCHEDULES` dicts with Redis or a proper job queue (Celery, ARQ)
 - Implement real SSH execution via `asyncssh` in `executor.py`
 - Add rate limiting (e.g. `slowapi`) on execution endpoints
 - Enable HTTPS / TLS termination at the reverse proxy

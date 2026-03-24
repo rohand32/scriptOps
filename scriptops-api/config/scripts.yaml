@@ -1,0 +1,157 @@
+# Script registry: id -> metadata. Merged over built-in defaults if present.
+# category: report | database | shell | cron
+# min_role: viewer | operator | manager | admin
+
+scripts:
+  - id: gen_sales
+    name: generate_sales_report.py
+    category: report
+    server: prod-01
+    path: /opt/scripts/reports/generate_sales_report.py
+    interpreter: python3
+    min_role: manager
+    timeout_sec: 300
+    allowed_params:
+      - date_from
+      - date_to
+      - format
+      - region
+      - include_returns
+      - group_by
+      - send_email
+      - recipients
+  - id: gen_inv
+    name: sync_inventory.py
+    category: report
+    server: prod-01
+    path: /opt/scripts/sync/sync_inventory.py
+    interpreter: python3
+    min_role: manager
+    timeout_sec: 180
+    allowed_params:
+      - dry_run
+      - batch_size
+      - skip_null_skus
+  - id: user_rpt
+    name: user_activity_report.py
+    category: report
+    server: prod-02
+    path: /opt/scripts/reports/user_activity_report.py
+    interpreter: python3
+    min_role: manager
+    timeout_sec: 240
+    allowed_params:
+      - date_from
+      - date_to
+      - format
+      - user_segment
+      - include_anonymous
+  - id: fin_rpt
+    name: finance_reconcile.py
+    category: report
+    server: prod-01
+    path: /opt/scripts/reports/finance_reconcile.py
+    interpreter: python3
+    min_role: manager
+    timeout_sec: 300
+    allowed_params:
+      - date_from
+      - date_to
+      - format
+      - gateway
+      - auto_flag_discrepancies
+  - id: weekly_digest
+    name: weekly_digest.py
+    category: report
+    server: prod-01
+    path: /opt/scripts/cron/weekly_digest.py
+    interpreter: python3
+    min_role: manager
+    timeout_sec: 120
+    allowed_params:
+      - week_offset
+      - format
+  - id: sched_sales
+    name: scheduled_sales_push.py
+    category: cron
+    server: prod-01
+    path: /opt/scripts/cron/scheduled_sales_push.py
+    interpreter: python3
+    min_role: admin
+    timeout_sec: 600
+    allowed_params: []
+  - id: sched_clean
+    name: scheduled_cleanup.sh
+    category: cron
+    server: prod-02
+    path: /opt/scripts/cron/scheduled_cleanup.sh
+    interpreter: bash
+    min_role: admin
+    timeout_sec: 60
+    allowed_params: []
+  - id: db_insert
+    name: db_insert_records.py
+    category: database
+    server: db-01
+    path: /opt/scripts/db/db_insert_records.py
+    interpreter: python3
+    min_role: admin
+    timeout_sec: 600
+    allowed_params:
+      - source_table
+      - source_file
+      - target_table
+      - batch_size
+      - on_conflict
+      - dry_run
+  - id: db_update
+    name: db_update_prices.py
+    category: database
+    server: db-01
+    path: /opt/scripts/db/db_update_prices.py
+    interpreter: python3
+    min_role: admin
+    timeout_sec: 300
+    allowed_params:
+      - price_sheet
+      - effective_date
+      - dry_run
+  - id: db_export
+    name: db_export_snapshot.py
+    category: database
+    server: db-01
+    path: /opt/scripts/db/db_export_snapshot.py
+    interpreter: python3
+    min_role: manager
+    timeout_sec: 300
+    allowed_params:
+      - table
+      - limit
+      - format
+  - id: db_backup
+    name: db_backup.sh
+    category: shell
+    server: db-01
+    path: /opt/scripts/ops/db_backup.sh
+    interpreter: bash
+    min_role: operator
+    timeout_sec: 600
+    allowed_params: []
+  - id: cleanup
+    name: cleanup_logs.sh
+    category: shell
+    server: prod-01
+    path: /opt/scripts/ops/cleanup_logs.sh
+    interpreter: bash
+    min_role: operator
+    timeout_sec: 60
+    allowed_params: []
+  - id: health
+    name: health_check.sh
+    category: shell
+    server: prod-01
+    path: /opt/scripts/ops/health_check.sh
+    interpreter: bash
+    min_role: operator
+    timeout_sec: 30
+    allowed_params: []

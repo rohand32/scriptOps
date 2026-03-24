@@ -195,8 +195,13 @@ async def report_history(
 ):
     report_script_ids = {"gen_sales","gen_inv","user_rpt","fin_rpt","weekly_digest"}
     by_user = user.name if user.role != Role.admin else None
-    jobs, total = list_jobs(status=status, triggered_by=by_user, page=page, page_size=limit)
-    jobs = [j for j in jobs if j["script_id"] in report_script_ids]
+    jobs, total = list_jobs(
+        status=status,
+        triggered_by=by_user,
+        script_ids=report_script_ids,
+        page=page,
+        page_size=limit,
+    )
     return {
         "items": jobs,
         "pagination": {

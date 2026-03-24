@@ -360,30 +360,40 @@ tr:hover td{background:rgba(99,178,255,0.03);color:var(--text0);}
       <div class="logo-mark">S/</div>
       <div><h1>ScriptOps</h1><p>Internal Automation Platform v2.0</p></div>
     </div>
-    <div class="login-label">Select account to sign in</div>
+    <div class="login-label">Connect to API</div>
+    <div class="fr" style="margin-bottom:12px">
+      <label>API base URL</label>
+      <input type="text" id="api-base-url" placeholder="http://127.0.0.1:8000" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);padding:8px 11px;font-size:12px;font-family:var(--mono);"/>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <label>API key (X-ScriptOps-Key)</label>
+      <input type="password" id="api-key-input" placeholder="sk_live_..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);padding:8px 11px;font-size:12px;font-family:var(--mono);"/>
+    </div>
+    <button class="btn btn-p" style="width:100%;justify-content:center" onclick="connectApi()">Connect</button>
+    <div class="login-note" style="margin-top:16px">Quick demo keys (dev)</div>
     <div class="user-pick">
-      <div class="ucard" onclick="login('admin')">
+      <div class="ucard" onclick="quickLogin('sk_live_admin_demo')">
         <div class="av" style="background:rgba(157,112,255,0.15);color:#9d70ff">AD</div>
-        <div><div class="name">Arjun Desai</div><div class="email">arjun@corp.internal</div></div>
+        <div><div class="name">Admin demo</div><div class="email">sk_live_admin_demo</div></div>
         <div class="rbadge" style="background:var(--purple-d);color:var(--purple)">Admin</div>
       </div>
-      <div class="ucard" onclick="login('manager')">
+      <div class="ucard" onclick="quickLogin('sk_live_manager_demo')">
         <div class="av" style="background:rgba(80,144,255,0.15);color:#5090ff">PM</div>
-        <div><div class="name">Priya Mehta</div><div class="email">priya@corp.internal</div></div>
+        <div><div class="name">Manager demo</div><div class="email">sk_live_manager_demo</div></div>
         <div class="rbadge" style="background:var(--blue-d);color:var(--blue)">Manager</div>
       </div>
-      <div class="ucard" onclick="login('operator')">
+      <div class="ucard" onclick="quickLogin('sk_live_operator_demo')">
         <div class="av" style="background:rgba(240,168,64,0.15);color:#f0a840">RK</div>
-        <div><div class="name">Rahul Khanna</div><div class="email">rahul@corp.internal</div></div>
+        <div><div class="name">Operator demo</div><div class="email">sk_live_operator_demo</div></div>
         <div class="rbadge" style="background:var(--amber-d);color:var(--amber)">Operator</div>
       </div>
-      <div class="ucard" onclick="login('viewer')">
+      <div class="ucard" onclick="quickLogin('sk_live_viewer_demo')">
         <div class="av" style="background:rgba(52,217,123,0.15);color:#34d97b">SJ</div>
-        <div><div class="name">Sneha Joshi</div><div class="email">sneha@corp.internal</div></div>
+        <div><div class="name">Viewer demo</div><div class="email">sk_live_viewer_demo</div></div>
         <div class="rbadge" style="background:var(--green-d);color:var(--green)">Viewer</div>
       </div>
     </div>
-    <div class="login-note">Demo environment — click any user to enter</div>
+    <div id="login-err" class="alert al-err hidden" style="margin-top:12px"></div>
   </div>
 </div>
 
@@ -450,7 +460,7 @@ tr:hover td{background:rgba(99,178,255,0.03);color:var(--text0);}
 <!-- ─── SCRIPTS ─── -->
 <div class="pg" id="pg-scripts">
   <div class="ph">
-    <div><h1>Script Library</h1><p>14 scripts across 3 servers · role-gated execution</p></div>
+    <div><h1>Script Library</h1><p id="scripts-sub">Loading scripts…</p></div>
     <div class="fac gap8">
       <select id="scripts-filter" onchange="renderScripts()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text1);border-radius:var(--r);font-family:var(--sans);font-size:12px;padding:7px 10px;outline:none;">
         <option value="">All Types</option>
@@ -758,63 +768,52 @@ tr:hover td{background:rgba(99,178,255,0.03);color:var(--text0);}
 
 <!-- ═══════════════════════════════ SCRIPT ════════════════════════════════════ -->
 <script>
-// ─── DATA ─────────────────────────────────────────────────────────────────────
-const USERS = {
-  admin:    {name:'Arjun Desai',   init:'AD', email:'arjun@corp.internal',  role:'admin',   col:'#9d70ff', bg:'rgba(157,112,255,0.15)'},
-  manager:  {name:'Priya Mehta',   init:'PM', email:'priya@corp.internal',  role:'manager', col:'#5090ff', bg:'rgba(80,144,255,0.15)'},
-  operator: {name:'Rahul Khanna',  init:'RK', email:'rahul@corp.internal',  role:'operator',col:'#f0a840', bg:'rgba(240,168,64,0.15)'},
-  viewer:   {name:'Sneha Joshi',   init:'SJ', email:'sneha@corp.internal',  role:'viewer',  col:'#34d97b', bg:'rgba(52,217,123,0.15)'},
-};
-// Role rank: viewer < operator < manager < admin
+// ─── API CONFIG ───────────────────────────────────────────────────────────────
+const SCRIPTOPS_API_DEFAULT = window.__SCRIPTOPS_API__ || 'http://127.0.0.1:8000';
+const LS_API_BASE = 'scriptops_api_base';
+const LS_API_KEY = 'scriptops_api_key';
+function getApiBase() {
+  const el = document.getElementById('api-base-url');
+  if (el && el.value.trim()) return el.value.trim().replace(/\/$/, '');
+  return localStorage.getItem(LS_API_BASE) || SCRIPTOPS_API_DEFAULT;
+}
+function setApiBase(u) { localStorage.setItem(LS_API_BASE, u); }
+function getApiKey() { return localStorage.getItem(LS_API_KEY) || ''; }
+function setApiKey(k) { localStorage.setItem(LS_API_KEY, k); }
+
+async function apiFetch(path, opts = {}) {
+  const base = getApiBase();
+  const key = getApiKey();
+  if (!key) throw new Error('No API key');
+  const headers = { 'X-ScriptOps-Key': key, ...opts.headers };
+  if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData) && !(opts.body instanceof Blob)) {
+    headers['Content-Type'] = 'application/json';
+    opts = { ...opts, body: JSON.stringify(opts.body) };
+  }
+  const r = await fetch(base + path, { ...opts, headers });
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { const j = await r.json(); msg = j.detail?.message || j.message || JSON.stringify(j.detail || j); } catch(e) { try { msg = await r.text(); } catch(e2) {} }
+    throw new Error(msg);
+  }
+  if (r.status === 204) return null;
+  const ct = r.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return r.json();
+  return r.text();
+}
+
+// ─── DATA (populated from API) ────────────────────────────────────────────────
 const RLVL = {viewer:0, operator:1, manager:2, admin:3};
-// Per your spec:
-//   viewer   = reports read-only (no execute)
-//   operator = shell/server scripts
-//   manager  = reports + read-only DB
-//   admin    = everything incl. DB INSERT/UPDATE
-const SCRIPTS = [
-  {id:'gen_sales',   name:'generate_sales_report.py', desc:'Monthly/weekly sales report exported to CSV and emailed',  type:'python', cat:'report', ico:'📊', srv:'prod-01', minRole:'manager',  path:'/opt/scripts/reports/generate_sales_report.py'},
-  {id:'gen_inv',     name:'sync_inventory.py',         desc:'Sync inventory table from ERP API to reporting DB',        type:'python', cat:'report', ico:'📦', srv:'prod-01', minRole:'manager',  path:'/opt/scripts/sync/sync_inventory.py'},
-  {id:'user_rpt',    name:'user_activity_report.py',   desc:'Generate user activity and engagement CSV for BI team',    type:'python', cat:'report', ico:'👤', srv:'prod-02', minRole:'manager',  path:'/opt/scripts/reports/user_activity_report.py'},
-  {id:'fin_rpt',     name:'finance_reconcile.py',      desc:'Daily reconciliation report across all payment gateways',  type:'python', cat:'report', ico:'💹', srv:'prod-01', minRole:'manager',  path:'/opt/scripts/reports/finance_reconcile.py'},
-  {id:'db_insert',   name:'db_insert_records.py',      desc:'Bulk insert records from staging into production DB',      type:'python', cat:'db',     ico:'🗄️', srv:'db-01',   minRole:'admin',    path:'/opt/scripts/db/db_insert_records.py'},
-  {id:'db_update',   name:'db_update_prices.py',       desc:'UPDATE product pricing table from approved pricing sheet', type:'python', cat:'db',     ico:'💾', srv:'db-01',   minRole:'admin',    path:'/opt/scripts/db/db_update_prices.py'},
-  {id:'db_read',     name:'db_export_snapshot.py',     desc:'Read-only DB snapshot export to S3 for analytics',        type:'python', cat:'db',     ico:'📤', srv:'db-01',   minRole:'manager',  path:'/opt/scripts/db/db_export_snapshot.py'},
-  {id:'db_backup',   name:'db_backup.sh',              desc:'Full PostgreSQL dump with S3 upload and retention policy', type:'shell',  cat:'shell',  ico:'💿', srv:'db-01',   minRole:'operator', path:'/opt/scripts/ops/db_backup.sh'},
-  {id:'cleanup',     name:'cleanup_logs.sh',           desc:'Rotate and archive logs older than 7 days on all servers', type:'shell',  cat:'shell',  ico:'🧹', srv:'prod-01', minRole:'operator', path:'/opt/scripts/ops/cleanup_logs.sh'},
-  {id:'ssl_renew',   name:'renew_ssl_certs.sh',        desc:'Renew Let\'s Encrypt certificates via certbot',           type:'shell',  cat:'shell',  ico:'🔐', srv:'prod-02', minRole:'operator', path:'/opt/scripts/ops/renew_ssl_certs.sh'},
-  {id:'health',      name:'health_check.sh',           desc:'Ping all service endpoints and report status to Slack',   type:'shell',  cat:'shell',  ico:'💡', srv:'prod-01', minRole:'operator', path:'/opt/scripts/ops/health_check.sh'},
-  {id:'sched_sales', name:'scheduled_sales_push.py',   desc:'Nightly push of sales data to data warehouse',            type:'python', cat:'cron',   ico:'⏱', srv:'prod-01', minRole:'admin',    path:'/opt/scripts/cron/scheduled_sales_push.py'},
-  {id:'sched_clean', name:'scheduled_cleanup.sh',      desc:'Midnight cleanup of temp files and orphaned processes',   type:'shell',  cat:'cron',   ico:'⏰', srv:'prod-02', minRole:'admin',    path:'/opt/scripts/cron/scheduled_cleanup.sh'},
-  {id:'sched_rpt',   name:'weekly_digest.py',          desc:'Monday morning summary report emailed to all managers',   type:'python', cat:'cron',   ico:'📬', srv:'prod-01', minRole:'admin',    path:'/opt/scripts/cron/weekly_digest.py'},
-];
-const SCHEDS = [
-  {id:'sc1', script:'generate_sales_report.py', cron:'0 8 * * 1-5',  human:'Weekdays at 08:00',    srv:'prod-01', next:'Today 08:00',  lastRun:'Yesterday 08:00', status:'success', avgDur:'38s', enabled:true},
-  {id:'sc2', script:'db_backup.sh',             cron:'0 2 * * *',    human:'Daily at 02:00 AM',    srv:'db-01',   next:'Tomorrow 02:00',lastRun:'Today 02:00',    status:'success', avgDur:'1m 20s', enabled:true},
-  {id:'sc3', script:'cleanup_logs.sh',          cron:'0 0 * * 0',    human:'Sundays at midnight',  srv:'prod-01', next:'Sun 00:00',    lastRun:'Last Sun 00:00',  status:'success', avgDur:'8s', enabled:true},
-  {id:'sc4', script:'scheduled_sales_push.py',  cron:'30 23 * * *',  human:'Daily at 23:30',       srv:'prod-01', next:'Tonight 23:30',lastRun:'Yesterday 23:30', status:'success', avgDur:'2m 10s', enabled:true},
-  {id:'sc5', script:'renew_ssl_certs.sh',       cron:'0 3 1 * *',    human:'1st of each month',    srv:'prod-02', next:'1 Jun 03:00',  lastRun:'1 May 03:00',     status:'success', avgDur:'22s', enabled:false},
-  {id:'sc6', script:'finance_reconcile.py',     cron:'0 6 * * 1-5',  human:'Weekdays at 06:00',    srv:'prod-01', next:'Today 06:00',  lastRun:'Yesterday 06:00', status:'failed',  avgDur:'—', enabled:true},
-  {id:'sc7', script:'health_check.sh',          cron:'*/5 * * * *',  human:'Every 5 minutes',      srv:'prod-01', next:'In 3 min',     lastRun:'5 min ago',       status:'success', avgDur:'2s', enabled:true},
-  {id:'sc8', script:'weekly_digest.py',         cron:'0 7 * * 1',    human:'Mondays at 07:00',     srv:'prod-01', next:'Mon 07:00',    lastRun:'Last Mon 07:00',  status:'success', avgDur:'55s', enabled:true},
-  {id:'sc9', script:'db_export_snapshot.py',    cron:'0 1 * * *',    human:'Daily at 01:00 AM',    srv:'db-01',   next:'Tomorrow 01:00',lastRun:'Today 01:00',    status:'success', avgDur:'1m 8s', enabled:true},
-];
-const EXECS = [
-  {id:'J0047',script:'generate_sales_report.py',srv:'prod-01',user:'Priya Mehta',   trigger:'manual',status:'success',dur:'38s',   ago:'12m ago'},
-  {id:'J0046',script:'db_backup.sh',            srv:'db-01',  user:'scheduler',     trigger:'cron',  status:'success',dur:'1m18s', ago:'1h ago'},
-  {id:'J0045',script:'sync_inventory.py',       srv:'prod-01',user:'Rahul Khanna',  trigger:'manual',status:'success',dur:'1m04s', ago:'2h ago'},
-  {id:'J0044',script:'db_insert_records.py',    srv:'db-01',  user:'Arjun Desai',   trigger:'manual',status:'failed', dur:'9s',    ago:'3h ago'},
-  {id:'J0043',script:'cleanup_logs.sh',         srv:'prod-02',user:'Rahul Khanna',  trigger:'manual',status:'success',dur:'4s',    ago:'4h ago'},
-  {id:'J0042',script:'user_activity_report.py', srv:'prod-02',user:'scheduler',     trigger:'cron',  status:'running',dur:'—',    ago:'just now'},
-  {id:'J0041',script:'finance_reconcile.py',    srv:'prod-01',user:'Priya Mehta',   trigger:'api',   status:'failed', dur:'3s',    ago:'6h ago'},
-  {id:'J0040',script:'health_check.sh',         srv:'prod-01',user:'scheduler',     trigger:'cron',  status:'success',dur:'2s',    ago:'5m ago'},
-];
-const API_KEYS = [
-  {name:'ETL Pipeline',     key:'sk_live_et7x...k2a', owner:'Arjun Desai',  scope:'operator', used:'2h ago',   active:true},
-  {name:'BI Dashboard',     key:'sk_live_bi4d...9f1', owner:'Priya Mehta',  scope:'viewer',   used:'just now', active:true},
-  {name:'Nightly Cron',     key:'sk_live_cr8n...7p4', owner:'Arjun Desai',  scope:'manager',  used:'6h ago',   active:true},
-  {name:'Deprecated',       key:'sk_live_dp2x...0q9', owner:'Rahul Khanna', scope:'operator', used:'32d ago',  active:false},
-];
+const ROLE_STYLE = {
+  admin:    {col:'#9d70ff', bg:'rgba(157,112,255,0.15)'},
+  manager:  {col:'#5090ff', bg:'rgba(80,144,255,0.15)'},
+  operator: {col:'#f0a840', bg:'rgba(240,168,64,0.15)'},
+  viewer:   {col:'#34d97b', bg:'rgba(52,217,123,0.15)'},
+};
+let SCRIPTS = [];
+let SCHEDS = [];
+let EXECS = [];
+let API_KEYS_LIST = [];
 const SERVERS = [
   {name:'prod-01', ip:'10.0.1.10', os:'Ubuntu 22.04', cpu:34, mem:61, disk:48, status:'online',  scripts:7, uptime:'99.97%'},
   {name:'prod-02', ip:'10.0.1.11', os:'Ubuntu 22.04', cpu:18, mem:44, disk:31, status:'online',  scripts:4, uptime:'99.99%'},
@@ -867,40 +866,158 @@ const STREAM_LINES = [
 ];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let CU = null;  // current user object
+let CU = null;
 let curScript = null;
 let liveInterval = null;
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-function login(role) {
-  CU = {...USERS[role]};
-  document.getElementById('login').style.display = 'none';
-  const av = document.getElementById('sb-av');
-  av.textContent = CU.init;
-  av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${CU.bg};color:${CU.col};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;flex-shrink:0;`;
-  document.getElementById('sb-name').textContent = CU.name;
-  document.getElementById('sb-role').textContent = CU.role;
-  document.getElementById('ov-greeting').textContent = `Welcome, ${CU.name.split(' ')[0]} · ${CU.role}`;
-  // Lock admin-only nav
-  const isAdmin = CU.role === 'admin';
-  ['ni-users','ni-api','ni-servers'].forEach(id => {
-    const el = document.getElementById(id);
-    el.style.opacity = isAdmin ? '1' : '0.3';
-    el.style.pointerEvents = isAdmin ? '' : 'none';
-  });
-  ['btn-add-script','btn-add-sched','btn-add-user','btn-gen-key','btn-add-srv'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = isAdmin ? '' : 'none';
-  });
-  renderAll();
-  nav('overview');
-  startLiveStream();
+function mapApiScript(s) {
+  const cat = s.category === 'database' ? 'db' : s.category;
+  const py = (s.interpreter || '').indexOf('python') >= 0;
+  return {
+    id: s.script_id,
+    name: s.name,
+    desc: s.path,
+    type: py ? 'python' : 'shell',
+    cat,
+    ico: '📄',
+    srv: s.server,
+    minRole: s.min_role,
+    path: s.path,
+    allowed_params: s.allowed_params || [],
+  };
 }
+
+function mapSchedule(row) {
+  return {
+    id: row.schedule_id,
+    script: row.script_name || row.script_id,
+    cron: row.cron_expr,
+    human: row.human_readable || row.cron_expr,
+    srv: row.server,
+    next: row.next_run || '—',
+    lastRun: row.last_run || '—',
+    status: row.last_status || '—',
+    avgDur: '—',
+    enabled: !!row.enabled,
+  };
+}
+
+function mapExecItem(j) {
+  const ts = j.created_at ? new Date(j.created_at).getTime() : 0;
+  const ago = ts ? timeAgo(ts) : '—';
+  const dur = j.duration_ms != null ? (j.duration_ms > 60000 ? Math.round(j.duration_ms/60000)+'m' : Math.round(j.duration_ms/1000)+'s') : '—';
+  return {
+    id: j.job_id,
+    script: j.script_name || j.script_id,
+    srv: j.server,
+    user: j.triggered_by,
+    trigger: j.trigger || 'api',
+    status: j.status,
+    dur,
+    ago,
+  };
+}
+
+function timeAgo(ts) {
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
+}
+
+async function loadRemoteData() {
+  const [scriptsRes, schedRes, execRes, keysRes] = await Promise.all([
+    apiFetch('/api/v1/scripts').catch(() => ({items:[]})),
+    apiFetch('/api/v1/cron/schedules').catch(() => ({items:[]})),
+    apiFetch('/api/v1/executions/?limit=50').catch(() => ({items:[]})),
+    apiFetch('/api/v1/auth/keys').catch(() => ({items:[]})),
+  ]);
+  SCRIPTS = (scriptsRes.items || []).map(mapApiScript);
+  SCHEDS = (schedRes.items || []).map(mapSchedule);
+  EXECS = (execRes.items || []).map(mapExecItem);
+  API_KEYS_LIST = keysRes.items || [];
+}
+
+async function connectApi() {
+  const err = document.getElementById('login-err');
+  err.classList.add('hidden');
+  const keyIn = document.getElementById('api-key-input');
+  const baseIn = document.getElementById('api-base-url');
+  if (baseIn && baseIn.value.trim()) setApiBase(baseIn.value.trim().replace(/\/$/, ''));
+  const key = (keyIn && keyIn.value.trim()) || getApiKey();
+  if (!key) { err.textContent = 'Enter an API key'; err.classList.remove('hidden'); return; }
+  setApiKey(key);
+  try {
+    const me = await apiFetch('/api/v1/auth/me');
+    const role = (me.role && me.role.value) ? me.role.value : me.role;
+    const st = ROLE_STYLE[role] || ROLE_STYLE.viewer;
+    const parts = (me.name || 'User').split(/\s+/).filter(Boolean);
+    const init = parts.length >= 2 ? (parts[0][0] + parts[1][0]) : (me.name || 'U').slice(0, 2).toUpperCase();
+    CU = { name: me.name, email: me.email, role, init, col: st.col, bg: st.bg };
+    await loadRemoteData();
+    document.getElementById('login').style.display = 'none';
+    const av = document.getElementById('sb-av');
+    av.textContent = CU.init;
+    av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${CU.bg};color:${CU.col};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;flex-shrink:0;`;
+    document.getElementById('sb-name').textContent = CU.name;
+    document.getElementById('sb-role').textContent = CU.role;
+    document.getElementById('ov-greeting').textContent = `Welcome, ${CU.name.split(' ')[0]} · ${CU.role}`;
+    const isAdmin = CU.role === 'admin';
+    ['ni-users','ni-api','ni-servers'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.opacity = isAdmin ? '1' : '0.3';
+      el.style.pointerEvents = isAdmin ? '' : 'none';
+    });
+    ['btn-add-script','btn-add-sched','btn-add-user','btn-gen-key','btn-add-srv'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = isAdmin ? '' : 'none';
+    });
+    updateOverviewStats();
+    const ss = document.getElementById('scripts-sub');
+    if (ss) ss.textContent = SCRIPTS.length + ' scripts · role-gated execution';
+    renderAll();
+    nav('overview');
+    startLiveStream();
+  } catch (e) {
+    err.textContent = String(e.message || e);
+    err.classList.remove('hidden');
+  }
+}
+
+function quickLogin(key) {
+  document.getElementById('api-key-input').value = key;
+  connectApi();
+}
+
 function logout() {
   CU = null;
   clearInterval(liveInterval);
   document.getElementById('login').style.display = 'flex';
 }
+
+function updateOverviewStats() {
+  const total = SCRIPTS.length;
+  const py = SCRIPTS.filter(s => s.type === 'python').length;
+  const sh = SCRIPTS.filter(s => s.type === 'shell').length;
+  const cards = document.querySelectorAll('#pg-overview .g4 .sc-val');
+  if (cards[0]) cards[0].textContent = total;
+  const subs = document.querySelectorAll('#pg-overview .g4 .sc-sub');
+  if (subs[0]) subs[0].textContent = py + ' Python · ' + sh + ' Shell';
+  if (cards[2]) cards[2].textContent = String(SCHEDS.length);
+  const runs = EXECS.length;
+  const ok = EXECS.filter(e => e.status === 'success').length;
+  const bad = EXECS.filter(e => e.status === 'failed').length;
+  if (cards[1]) cards[1].textContent = String(runs);
+  if (subs[1]) subs[1].textContent = ok + ' success · ' + bad + ' failed';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const b = document.getElementById('api-base-url');
+  if (b) b.value = getApiBase();
+  const k = document.getElementById('api-key-input');
+  if (k && getApiKey()) k.value = getApiKey();
+});
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 function nav(pg) {
@@ -1149,47 +1266,67 @@ function scrollLogsBottom() {
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
 function renderUsers() {
-  document.getElementById('users-tbody').innerHTML = Object.values(USERS).map(u => {
-    const isMe = CU && u.email === CU.email;
-    return `<tr>
+  if (!CU) return;
+  document.getElementById('users-tbody').innerHTML = `<tr>
       <td>
         <div class="fac gap8">
-          <div style="width:26px;height:26px;border-radius:50%;background:${u.bg};color:${u.col};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;flex-shrink:0">${u.init}</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:${CU.bg};color:${CU.col};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;flex-shrink:0">${CU.init}</div>
           <div>
-            <div style="font-size:12px;color:var(--text0)">${u.name}${isMe?' <span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
-            <div style="font-size:10px;color:var(--text2);font-family:var(--mono)">${u.email}</div>
+            <div style="font-size:12px;color:var(--text0)">${CU.name} <span style="font-size:10px;color:var(--text3)">(current API key)</span></div>
+            <div style="font-size:10px;color:var(--text2);font-family:var(--mono)">${CU.email}</div>
           </div>
         </div>
       </td>
-      <td>${roleBadge(u.role)}</td>
-      <td class="tiny mono dim">Today</td>
-      <td>${CU?.role==='admin' && !isMe ? `<button class="btn btn-g btn-xs" onclick="editUser()">Edit</button>` : ''}</td>
+      <td>${roleBadge(CU.role)}</td>
+      <td class="tiny mono dim">—</td>
+      <td></td>
     </tr>`;
-  }).join('');
 }
-function editUser() { alert('User edit form — connect to your backend API here.'); }
+function editUser() { alert('User directory is API-key based. Rotate keys in API Keys.'); }
 
 // ─── API KEYS ─────────────────────────────────────────────────────────────────
 function renderApiKeys() {
-  document.getElementById('api-tbody').innerHTML = API_KEYS.map((k,i) =>
-    `<tr>
-      <td style="color:var(--text0)">${k.name}</td>
-      <td class="mono tiny">${k.key}</td>
-      <td class="dim tiny">${k.owner}</td>
-      <td>${roleBadge(k.scope)}</td>
-      <td class="dim tiny mono">${k.used}</td>
-      <td>${k.active ? `<span class="sp sp-ok">active</span>` : `<span class="sp sp-err">revoked</span>`}</td>
-      <td>${CU?.role==='admin' && k.active ? `<button class="btn btn-danger btn-xs" onclick="revokeKey(${i})">Revoke</button>` : ''}</td>
-    </tr>`
-  ).join('');
+  const rows = API_KEYS_LIST || [];
+  document.getElementById('api-tbody').innerHTML = rows.map((k) => {
+    const scope = (k.scope && k.scope.value) ? k.scope.value : (k.scope || '—');
+    const kid = k.key_id || '—';
+    return `<tr>
+      <td style="color:var(--text0)">${escHtml(k.name || '')}</td>
+      <td class="mono tiny">${escHtml(kid)}</td>
+      <td class="dim tiny">${escHtml(k.created_by || '—')}</td>
+      <td>${roleBadge(scope)}</td>
+      <td class="dim tiny mono">${k.created_at ? new Date(k.created_at).toLocaleString() : '—'}</td>
+      <td><span class="sp sp-ok">active</span></td>
+      <td>${CU?.role==='admin' && kid !== '—' ? `<button class="btn btn-danger btn-xs" onclick="revokeKey('${kid}')">Revoke</button>` : ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" class="dim tiny">No keys or insufficient permission</td></tr>';
 }
-function genKey() {
+async function genKey() {
   if (CU?.role !== 'admin') return;
-  const r = () => Math.random().toString(36).slice(2,6);
-  API_KEYS.unshift({name:`Key-${Date.now().toString().slice(-4)}`,key:`sk_live_${r()}...${r().slice(0,3)}`,owner:CU.name,scope:'operator',used:'Never',active:true});
-  renderApiKeys();
+  const name = prompt('Key name', 'dashboard-key');
+  if (!name) return;
+  const scope = prompt('Scope: viewer | operator | manager | admin', 'operator');
+  if (!scope) return;
+  try {
+    const res = await apiFetch('/api/v1/auth/keys', { method: 'POST', body: { name, scope } });
+    await loadRemoteData();
+    renderApiKeys();
+    if (res && res.key) alert('Copy this key now (shown once): ' + res.key);
+  } catch (e) {
+    alert(String(e.message || e));
+  }
 }
-function revokeKey(i) { API_KEYS[i].active = false; renderApiKeys(); }
+async function revokeKey(keyId) {
+  if (CU?.role !== 'admin' || !keyId) return;
+  if (!confirm('Revoke this key?')) return;
+  try {
+    await apiFetch('/api/v1/auth/keys/' + encodeURIComponent(keyId), { method: 'DELETE' });
+    await loadRemoteData();
+    renderApiKeys();
+  } catch (e) {
+    alert(String(e.message || e));
+  }
+}
 
 // ─── SERVERS ──────────────────────────────────────────────────────────────────
 function renderServers() {
@@ -1230,6 +1367,29 @@ function renderServers() {
 }
 
 // ─── EXECUTION ───────────────────────────────────────────────────────────────
+function populateExecServerSelect() {
+  const sel = document.getElementById('m-exec-server');
+  if (!sel || !curScript) return;
+  const seen = new Set();
+  const ids = [];
+  for (const s of SCRIPTS) {
+    if (s.srv && !seen.has(s.srv)) {
+      seen.add(s.srv);
+      ids.push(s.srv);
+    }
+  }
+  if (!ids.length && curScript.srv) ids.push(curScript.srv);
+  sel.innerHTML = '';
+  for (const sid of ids) {
+    const o = document.createElement('option');
+    o.value = sid;
+    o.textContent = sid;
+    sel.appendChild(o);
+  }
+  const def = curScript.srv && ids.includes(curScript.srv) ? curScript.srv : ids[0];
+  if (def) sel.value = def;
+}
+
 function openExec(id) {
   curScript = SCRIPTS.find(s => s.id === id);
   if (!curScript) return;
@@ -1246,10 +1406,11 @@ function openExec(id) {
   document.getElementById('m-exec-stream').classList.add('hidden');
   document.getElementById('m-exec-stream').innerHTML = '';
   runBtn.innerHTML = '▷ Run Script';
+  populateExecServerSelect();
   openM('m-exec');
 }
 
-function doExec() {
+async function doExec() {
   const btn = document.getElementById('m-exec-run');
   btn.disabled = true; btn.innerHTML = '⏳ Launching...';
   const pbarW = document.getElementById('m-exec-pbar-w');
@@ -1258,35 +1419,95 @@ function doExec() {
   pbarW.classList.remove('hidden');
   stream.classList.remove('hidden');
   stream.innerHTML = '';
-
-  let pct = 0, lineIdx = 0;
-  const lines = STREAM_LINES;
-
-  function addLine(l) {
-    const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf'}[l.c] || '';
-    const now = new Date().toLocaleTimeString('en-IN',{hour12:false});
-    stream.innerHTML += `<div><span class="ts">[${now}]</span> <span class="${cls}">${escHtml(l.t)}</span></div>`;
-    stream.scrollTop = stream.scrollHeight;
-  }
-
+  let pct = 0;
   const pbarIv = setInterval(() => {
     pct = Math.min(pct + Math.random()*12+4, 98);
     pbar.style.width = pct + '%';
   }, 300);
-
-  function schedLine() {
-    if (lineIdx >= lines.length) {
+  let params = {};
+  try {
+    const raw = document.getElementById('m-exec-params').value.trim();
+    if (raw) params = JSON.parse(raw);
+  } catch (e) {
+    clearInterval(pbarIv);
+    btn.disabled = false; btn.innerHTML = '▷ Run Script';
+    alert('Invalid JSON in parameters');
+    return;
+  }
+  const srvSel = document.getElementById('m-exec-server');
+  let server = null;
+  if (srvSel && srvSel.value) server = srvSel.value.trim();
+  try {
+    const job = await apiFetch('/api/v1/scripts/' + encodeURIComponent(curScript.id) + '/run', {
+      method: 'POST',
+      body: { params, server: server || undefined },
+    });
+    const jobId = job.job_id;
+    const base = getApiBase();
+    const key = getApiKey();
+    const url = base + '/api/v1/executions/' + encodeURIComponent(jobId) + '/stream';
+    const res = await fetch(url, { headers: { 'X-ScriptOps-Key': key } });
+    if (!res.ok) throw new Error('SSE stream failed: ' + res.status);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    let doneReceived = false;
+    outer: while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        let ev = 'message', dataLine = '';
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('event:')) ev = line.slice(6).trim();
+          if (line.startsWith('data:')) dataLine += line.slice(5).trim();
+        }
+        if (!dataLine) continue;
+        try {
+          const j = JSON.parse(dataLine);
+          if (ev === 'output' && j.text) {
+            const cls = { ok:'ok', err:'err', warn:'warn', inf:'inf', sys:'sys' }[j.level] || '';
+            stream.innerHTML += `<div><span class="ts">[${j.ts||''}]</span> <span class="${cls}">${escHtml(j.text)}</span></div>`;
+            stream.scrollTop = stream.scrollHeight;
+          }
+          if (ev === 'error' || ev === 'timeout') {
+            clearInterval(pbarIv);
+            pbar.style.width = '100%';
+            const msg = j.message || (ev === 'timeout' ? 'Stream timed out' : 'Stream error');
+            stream.innerHTML += `<div class="err">${escHtml(msg)}</div>`;
+            btn.disabled = false;
+            btn.innerHTML = '▷ Run Script';
+            break outer;
+          }
+          if (ev === 'done') {
+            doneReceived = true;
+            clearInterval(pbarIv);
+            pbar.style.width = '100%';
+            btn.innerHTML = '✓ Completed';
+            setTimeout(() => {
+              closeM('m-exec');
+              loadRemoteData().then(() => { renderExecs(); renderOvExecs(); updateOverviewStats(); });
+            }, 500);
+            break outer;
+          }
+        } catch (e) { /* ignore parse */ }
+      }
+    }
+    if (!doneReceived) {
       clearInterval(pbarIv);
       pbar.style.width = '100%';
-      btn.innerHTML = '✓ Completed';
-      setTimeout(() => { closeM('m-exec'); addLiveLog(curScript); }, 600);
-      return;
+      btn.innerHTML = '✓ Done';
+      setTimeout(() => { closeM('m-exec'); loadRemoteData().then(() => { renderExecs(); renderOvExecs(); updateOverviewStats(); }); }, 400);
     }
-    const l = lines[lineIdx++];
-    if (l.t) addLine(l);
-    setTimeout(schedLine, lines[lineIdx]?.d - (lines[lineIdx-1]?.d||0) || 400);
+  } catch (e) {
+    clearInterval(pbarIv);
+    stream.innerHTML += `<div class="err">${escHtml(String(e.message||e))}</div>`;
+    btn.disabled = false;
+    btn.innerHTML = '▷ Run Script';
   }
-  setTimeout(schedLine, lines[0].d);
 }
 
 function addLiveLog(script) {
@@ -1299,20 +1520,43 @@ function addLiveLog(script) {
 }
 
 // ─── STREAM VIEWER ───────────────────────────────────────────────────────────
-function openStreamViewer(id) {
+async function openStreamViewer(id) {
   const s = SCRIPTS.find(x => x.id === id) || EXECS.find(x => x.id === id);
   const name = s?.name || s?.script || id;
   document.getElementById('m-stream-title').textContent = '⬡ Output Stream';
-  document.getElementById('m-stream-sub').textContent = name + ' — historical log';
+  document.getElementById('m-stream-sub').textContent = name + ' — job log';
   const term = document.getElementById('m-stream-term');
   const badge = document.getElementById('m-stream-badge');
-  badge.innerHTML = '<span class="dot"></span> COMPLETED';
-  badge.style.background = 'var(--green-d)'; badge.style.color = 'var(--green)';
-  term.innerHTML = LOG_DATA.slice(0,18).map(l => {
-    const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf',sys:'sys'}[l.lvl]||'';
-    return `<div><span class="ts">[${l.ts}]</span> <span class="${cls}">${escHtml(l.txt)}</span></div>`;
-  }).join('');
+  badge.innerHTML = '<span class="dot pulse"></span> LOADING';
+  badge.style.background = 'var(--cyan-d)'; badge.style.color = 'var(--cyan)';
   openM('m-stream');
+  term.innerHTML = '';
+  let jobId = null;
+  if (typeof id === 'string' && /^J[A-Z0-9]+$/i.test(id)) jobId = id;
+  if (!jobId) {
+    term.innerHTML = LOG_DATA.slice(0,18).map(l => {
+      const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf',sys:'sys'}[l.lvl]||'';
+      return `<div><span class="ts">[${l.ts}]</span> <span class="${cls}">${escHtml(l.txt)}</span></div>`;
+    }).join('');
+    badge.innerHTML = '<span class="dot"></span> SAMPLE';
+    badge.style.background = 'var(--green-d)'; badge.style.color = 'var(--green)';
+    setTimeout(()=>{ term.scrollTop = term.scrollHeight; }, 50);
+    return;
+  }
+  try {
+    const data = await apiFetch('/api/v1/executions/' + encodeURIComponent(jobId) + '/logs');
+    const lines = data.lines || [];
+    term.innerHTML = lines.map(l => {
+      const cls = {ok:'ok',err:'err',warn:'warn',inf:'inf',sys:'sys'}[l.level]||'';
+      return `<div><span class="ts">[${l.ts||''}]</span> <span class="${cls}">${escHtml(l.text||'')}</span></div>`;
+    }).join('') || '<div class="dim">No log lines</div>';
+    badge.innerHTML = '<span class="dot"></span> COMPLETED';
+    badge.style.background = 'var(--green-d)'; badge.style.color = 'var(--green)';
+  } catch (e) {
+    term.innerHTML = `<div class="err">${escHtml(String(e.message||e))}</div>`;
+    badge.innerHTML = '<span class="dot"></span> ERROR';
+    badge.style.background = 'var(--red-d)'; badge.style.color = 'var(--red)';
+  }
   setTimeout(()=>{ term.scrollTop = term.scrollHeight; }, 50);
 }
 
