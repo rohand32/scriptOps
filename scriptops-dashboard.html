@@ -790,7 +790,17 @@ async function apiFetch(path, opts = {}) {
     headers['Content-Type'] = 'application/json';
     opts = { ...opts, body: JSON.stringify(opts.body) };
   }
-  const r = await fetch(base + path, { ...opts, headers });
+  let r;
+  try {
+    r = await fetch(base + path, { ...opts, headers });
+  } catch (netErr) {
+    const hint = (typeof location !== 'undefined' && location.protocol === 'file:')
+      ? ' You opened this page via file:// — ensure the API allows Origin "null" (default in ScriptOps) or serve this HTML over HTTP (e.g. Live Server).'
+      : '';
+    throw new Error(
+      `Cannot reach ${base}: ${netErr && netErr.message ? netErr.message : netErr}. Start the API: cd scriptops-api && uvicorn app.main:app --host 127.0.0.1 --port 8000.${hint}`
+    );
+  }
   if (!r.ok) {
     let msg = r.statusText;
     try { const j = await r.json(); msg = j.detail?.message || j.message || JSON.stringify(j.detail || j); } catch(e) { try { msg = await r.text(); } catch(e2) {} }
@@ -980,7 +990,11 @@ async function connectApi() {
     nav('overview');
     startLiveStream();
   } catch (e) {
-    err.textContent = String(e.message || e);
+    let msg = String(e.message || e);
+    if (msg === 'Failed to fetch' || /NetworkError|Load failed/i.test(msg)) {
+      msg = 'Cannot reach the API. Use API base URL http://127.0.0.1:8000 (or your server), run uvicorn in scriptops-api, and check CORS. If you use file://, restart the API after updating CORS or serve the dashboard with a local HTTP server.';
+    }
+    err.textContent = msg;
     err.classList.remove('hidden');
   }
 }

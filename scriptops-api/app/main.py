@@ -19,9 +19,12 @@ logger = setup_logger(__name__)
 
 
 def _cors_origins() -> list[str]:
+    # Include "null" so browsers allow requests when the dashboard is opened as file://
+    # (VS Code / Finder "Open with browser" uses Origin: null).
     raw = os.environ.get(
         "SCRIPTOPS_CORS_ORIGINS",
-        "https://scriptops.internal,http://localhost:3000,http://localhost:8080,http://127.0.0.1:5500,http://127.0.0.1:8080",
+        "https://scriptops.internal,http://localhost:3000,http://localhost:8080,"
+        "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:8080,null",
     )
     return [o.strip() for o in raw.split(",") if o.strip()]
 
