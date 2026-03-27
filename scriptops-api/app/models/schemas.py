@@ -323,3 +323,36 @@ class CancelRequest(BaseModel):
 class ScriptRunRequest(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict, description="Script parameters (validated against allowed_params)")
     server: Optional[str] = Field(None, description="Override default server id from registry")
+
+
+class ScriptRunTarget(BaseModel):
+    """One execution target: remote server id + payload for that run."""
+
+    server: str = Field(..., min_length=1, description="Server id from servers.yaml (e.g. prod-01)")
+    params: Dict[str, Any] = Field(default_factory=dict, description="Parameters for this server only")
+
+
+class ScriptRunBatchRequest(BaseModel):
+    """Run the same script_id on many servers, each with its own params."""
+
+    targets: List[ScriptRunTarget] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Up to 50 targets; each may use a different payload",
+    )
+
+
+class ScriptRunBatchItem(BaseModel):
+    server: str
+    job_id: str
+    status: str
+    message: str
+    stream_url: str
+    status_url: str
+
+
+class ScriptRunBatchResponse(BaseModel):
+    script_id: str
+    total: int
+    items: List[ScriptRunBatchItem]
