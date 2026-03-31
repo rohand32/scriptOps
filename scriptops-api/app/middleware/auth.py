@@ -18,7 +18,7 @@ def _hash(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 _KEY_STORE: dict[str, dict] = {
-    _hash("sk_live_admin_demo"):    {"user_id":"usr_001","name":"Arjun Desai",  "email":"arjun@corp.internal", "role":"admin",    "key_name":"Admin Demo Key"},
+    _hash("sk_live_admin_demo"):    {"user_id":"usr_001","name":"Rohan Deshmukh",  "email":"rohan@corp.internal", "role":"admin",    "key_name":"Admin Demo Key"},
     _hash("sk_live_manager_demo"):  {"user_id":"usr_002","name":"Priya Mehta",  "email":"priya@corp.internal", "role":"manager",  "key_name":"Manager Demo Key"},
     _hash("sk_live_operator_demo"): {"user_id":"usr_003","name":"Rahul Khanna", "email":"rahul@corp.internal", "role":"operator", "key_name":"Operator Demo Key"},
     _hash("sk_live_viewer_demo"):   {"user_id":"usr_004","name":"Sneha Joshi",  "email":"sneha@corp.internal", "role":"viewer",   "key_name":"Viewer Demo Key"},
